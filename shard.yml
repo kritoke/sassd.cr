@@ -1,0 +1,10 @@
+name: sassd
+version: 0.1.0
+authors:
+  - kritoke <kritoke@example.com>
+
+description: |
+  A modern Crystal wrapper for the Dart Sass CLI, 
+  providing API compatibility with sass.cr.
+
+license: MIT
