@@ -28,8 +28,12 @@ describe Sass do
       ex = expect_raises(Sass::CompilationError) do
         Sass.compile("invalid { syntax")
       end
-      ex.message.not_nil!.should contain("STDOUT:")
-      ex.message.not_nil!.should contain("STDERR:")
+      message = ex.message
+      message.should_not be_nil
+      if message
+        message.should contain("STDOUT:")
+        message.should contain("STDERR:")
+      end
     end
   end
 
