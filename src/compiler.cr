@@ -57,6 +57,26 @@ module Sass
                         is_indented_syntax_src : Bool = false) : String
     verify_bin_path!
 
+    # Handle Jekyll-style YAML front matter by stripping it before compilation
+    if File.exists?(path)
+      content = File.read(path)
+      if content.starts_with?("---")
+        parts = content.split("---", 3)
+        if parts.size == 3
+          return compile(
+            source: parts[2],
+            style: style,
+            load_paths: load_paths,
+            source_map: source_map,
+            source_map_embed: source_map_embed,
+            source_path: path,
+            include_path: include_path,
+            is_indented_syntax_src: is_indented_syntax_src
+          )
+        end
+      end
+    end
+
     args = [path]
     args += common_args(style, source_map, source_map_embed, load_paths, include_path)
     args << "--indented" if is_indented_syntax_src
