@@ -1,9 +1,5 @@
 # sassd.cr
 
-[!Crystal CI](https://github.com/kritoke/sassd.cr/actions)
-[!License](https://github.com/kritoke/sassd.cr/blob/master/LICENSE)
-[!Latest Release](https://github.com/kritoke/sassd.cr/releases)
-
 A modern, high-performance Crystal wrapper for the Dart Sass CLI. 
 
 `sassd.cr` provides a familiar, `libsass`-style API while leveraging the power and spec-compliance of the official Dart Sass implementation. By shelling out to the native binary, it avoids the complexities of C bindings and the obsolescence of the deprecated LibSass library.
