@@ -17,6 +17,24 @@ tool.
 **Experimental.** The API is intentionally close to `sass.cr`, but exact output
 may differ in edge cases due to Dart Sass vs Libsass behavior differences. 
 
+## Setup
+
+This shard requires the Dart Sass executable. You can install it locally into your project's `bin/` folder using the provided Makefile:
+
+```bash
+make sass
+```
+
+This will attempt to download the standalone Dart Sass binary for your platform. If it cannot find a matching binary, it will fallback to an `npm` global installation.
+
+## Cleaning
+
+To remove the locally installed Sass binary and associated files from the `bin/` directory, run:
+
+```bash
+make clean-sass
+```
+
 ## Installation
 
 Add this shard to your `shard.yml`:

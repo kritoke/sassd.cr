@@ -32,29 +32,10 @@ module Sass
                    is_indented_syntax_src : Bool = false) : String
     verify_bin_path!
 
-    args = ["--stdin", "--style=#{style}"]
+    args = ["--stdin"]
+    args += common_args(style, source_map, source_map_embed, load_paths, include_path)
     args << "--indented" if is_indented_syntax_src
-
-    if source_map_embed
-      args << "--embed-source-map"
-    else
-      args << (source_map ? "--source-map" : "--no-source-map")
-    end
-
-    # Ensures the source map points to the correct original file path
     args << "--stdin-file-path=#{source_path}" if source_path
-
-    # Combine load_paths and include_path for API compatibility
-    all_paths = [] of String
-    all_paths.concat(load_paths) if load_paths
-    case include_path
-    when String        then all_paths << include_path
-    when Array(String) then all_paths.concat(include_path)
-    end
-
-    all_paths.each do |lp|
-      args << "--load-path=#{lp}"
-    end
 
     input = IO::Memory.new(source)
     output = IO::Memory.new
@@ -79,23 +60,9 @@ module Sass
                         is_indented_syntax_src : Bool = false) : String
     verify_bin_path!
 
-    args = [path, "--style=#{style}"]
-    if source_map_embed
-      args << "--embed-source-map"
-    else
-      args << (source_map ? "--source-map" : "--no-source-map")
-    end
-
-    all_paths = [] of String
-    all_paths.concat(load_paths) if load_paths
-    case include_path
-    when String        then all_paths << include_path
-    when Array(String) then all_paths.concat(include_path)
-    end
-
-    all_paths.each do |lp|
-      args << "--load-path=#{lp}"
-    end
+    args = [path]
+    args += common_args(style, source_map, source_map_embed, load_paths, include_path)
+    args << "--indented" if is_indented_syntax_src
 
     output = IO::Memory.new
     error = IO::Memory.new
@@ -121,24 +88,9 @@ module Sass
                              is_indented_syntax_src : Bool = false) : Nil
     verify_bin_path!
 
-    args = ["#{input_dir}:#{output_dir}", "--style=#{style}"]
-
-    if source_map_embed
-      args << "--embed-source-map"
-    else
-      args << (source_map ? "--source-map" : "--no-source-map")
-    end
-
-    all_paths = [] of String
-    all_paths.concat(load_paths) if load_paths
-    case include_path
-    when String        then all_paths << include_path
-    when Array(String) then all_paths.concat(include_path)
-    end
-
-    all_paths.each do |lp|
-      args << "--load-path=#{lp}"
-    end
+    args = ["#{input_dir}:#{output_dir}"]
+    args += common_args(style, source_map, source_map_embed, load_paths, include_path)
+    args << "--indented" if is_indented_syntax_src
 
     error = IO::Memory.new
     status = Process.run(@@bin_path, args: args, error: error)
@@ -148,10 +100,36 @@ module Sass
     end
   end
 
+  private def self.common_args(style, source_map, source_map_embed, load_paths, include_path)
+    args = ["--style=#{style}"]
+
+    if source_map_embed
+      args << "--embed-source-map"
+    else
+      args << (source_map ? "--source-map" : "--no-source-map")
+    end
+
+    resolve_load_paths(load_paths, include_path).each do |path|
+      args << "--load-path=#{path}"
+    end
+
+    args
+  end
+
+  private def self.resolve_load_paths(load_paths, include_path)
+    paths = [] of String
+    paths.concat(load_paths) if load_paths
+    case include_path
+    when String        then paths << include_path
+    when Array(String) then paths.concat(include_path)
+    end
+    paths
+  end
+
   private def self.verify_bin_path!
     return if @@version_verified
 
-    # Favor the local ./bin/sass installation (from 'make sass') 
+    # Favor the local ./bin/sass installation (from 'make sass')
     # over the system PATH to avoid version mismatches.
     path = if @@bin_path == "sass"
              Process.find_executable(File.expand_path("./bin/sass")) || Process.find_executable("sass")
