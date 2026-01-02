@@ -47,10 +47,13 @@ DART_URL_WIN := https://github.com/sass/dart-sass/releases/download/$(DART_VERSI
 CURL := curl -fL --retry 3 --retry-delay 2
 UNAME_S := $(OS)
 
-.PHONY: sass clean-sass npm-sass ensure-bin test
+.PHONY: sass clean-sass npm-sass ensure-bin test build
 
 sass: $(SASS_BIN)
 	@echo "Sass ready at $(SASS_BIN)"
+
+build: sass
+	shards build
 
 test: sass
 	crystal spec

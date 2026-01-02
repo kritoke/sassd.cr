@@ -1,10 +1,28 @@
 name: sassd
 version: 0.1.0
+crystal: '>= 1.18.2'
 authors:
-  - kritoke <kritoke@example.com>
+  - kritoke <3081486+kritoke@users.noreply.github.com>
+
 
 description: |
   A modern Crystal wrapper for the Dart Sass CLI, 
   providing API compatibility with sass.cr.
 
 license: MIT
+homepage: https://github.com/kritoke/sassd.cr
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
+    branch: master
+
+libraries:
+  sass: "*"
+
+targets:
+  sassd:
+    main: src/cli.cr
+
+scripts:
+  postinstall: make sass
