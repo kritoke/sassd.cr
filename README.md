@@ -43,6 +43,7 @@ Add this shard to your `shard.yml`:
 dependencies:
   sassd:
     github: kritoke/sassd.cr
+```
 
 ## Contributing
 
