@@ -1,66 +1,87 @@
 require "./spec_helper"
+require "file_utils"
 
 describe Sass do
   describe ".compile" do
-    it "compiles a basic SCSS string" do
-      scss = "$color: #00aabb; body { color: $color; }"
-      css = Sass.compile(scss)
-      css.should contain("color: #00aabb")
+    it "compiles basic SCSS" do
+      css = Sass.compile(".a { color: red; }")
+      css.should contain("color: red")
     end
 
-    it "respects the style option" do
-      scss = "body { margin: 0; }"
-      compressed = Sass.compile(scss, style: "compressed")
-      compressed.should contain("body{margin:0}")
+    it "respects compressed style" do
+      css = Sass.compile(".a { color: red; }", style: "compressed")
+      css.should eq(".a{color:red}\n")
     end
 
-    it "raises CompilationError for invalid syntax" do
-      expect_raises(Sass::CompilationError) do
-        Sass.compile("body { color: $non-existent-var; }")
-      end
+    it "handles indented syntax (.sass)" do
+      sass = ".a\n  color: blue"
+      css = Sass.compile(sass, is_indented_syntax_src: true)
+      css.should contain("color: blue")
     end
 
-    it "embeds source maps when requested" do
-      scss = "body { color: red; }"
-      css = Sass.compile(scss, source_map: true, source_map_embed: true)
+    it "embeds source maps" do
+      css = Sass.compile(".a { color: red; }", source_map_embed: true)
       css.should contain("sourceMappingURL=data:application/json")
+    end
+
+    it "raises CompilationError with STDOUT and STDERR on failure" do
+      ex = expect_raises(Sass::CompilationError) do
+        Sass.compile("invalid { syntax")
+      end
+      ex.message.not_nil!.should contain("STDOUT:")
+      ex.message.not_nil!.should contain("STDERR:")
     end
   end
 
   describe ".compile_file" do
-    it "compiles a .scss file from disk" do
-      path = "spec/test_file.scss"
-      File.write(path, "div { p { font-size: 12px; } }")
-
+    it "compiles a file from disk" do
+      File.write("spec/test.scss", ".file { content: 'ok'; }")
       begin
-        css = Sass.compile_file(path)
-        css.should contain("div p")
-        css.should contain("font-size: 12px")
+        css = Sass.compile_file("spec/test.scss")
+        css.should contain("content: \"ok\"")
       ensure
-        File.delete(path) if File.exists?(path)
+        File.delete("spec/test.scss") if File.exists?("spec/test.scss")
+      end
+    end
+  end
+
+  describe "load paths and include paths" do
+    it "resolves imports via include_path (String)" do
+      Dir.mkdir_p("spec/lib")
+      File.write("spec/lib/_dep.scss", "$color: #abc;")
+      begin
+        css = Sass.compile("@import 'dep'; .test { color: $color; }", include_path: "spec/lib")
+        css.should contain("color: #abc")
+      ensure
+        FileUtils.rm_rf("spec/lib")
+      end
+    end
+
+    it "resolves imports via load_paths (Array)" do
+      Dir.mkdir_p("spec/lib2")
+      File.write("spec/lib2/_dep.scss", "$color: #def;")
+      begin
+        css = Sass.compile("@import 'dep'; .test { color: $color; }", load_paths: ["spec/lib2"])
+        css.should contain("color: #def")
+      ensure
+        FileUtils.rm_rf("spec/lib2")
       end
     end
   end
 
   describe ".compile_directory" do
-    it "compiles multiple files in a directory" do
-      in_dir = "spec/fixtures/scss"
-      out_dir = "spec/fixtures/css"
-
-      FileUtils.mkdir_p(in_dir)
-      FileUtils.mkdir_p(out_dir)
-
-      File.write("#{in_dir}/a.scss", "body { background: white; }")
-      File.write("#{in_dir}/b.scss", "header { display: flex; }")
-
+    it "compiles multiple files in a single process" do
+      Dir.mkdir_p("spec/src_dir")
+      Dir.mkdir_p("spec/out_dir")
+      File.write("spec/src_dir/one.scss", ".one { color: #111; }")
+      File.write("spec/src_dir/two.scss", ".two { color: #222; }")
       begin
-        Sass.compile_directory(in_dir, out_dir)
-
-        File.exists?("#{out_dir}/a.css").should be_true
-        File.exists?("#{out_dir}/b.css").should be_true
-        File.read("#{out_dir}/a.css").should contain("background: white")
+        Sass.compile_directory("spec/src_dir", "spec/out_dir")
+        File.read("spec/out_dir/one.css").should contain("color: #111")
+        File.read("spec/out_dir/two.css").should contain("color: #222")
       ensure
-        FileUtils.rm_rf("spec/fixtures")
+        FileUtils.rm_rf("spec/src_dir")
+        FileUtils.rm_rf("spec/out_dir")
       end
     end
   end
