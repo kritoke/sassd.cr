@@ -27,10 +27,14 @@ module Sass
                    load_paths : Array(String)? = nil,
                    source_map : Bool = false,
                    source_map_embed : Bool = false,
-                   source_path : String? = nil) : String
+                   source_path : String? = nil,
+                   include_path : Array(String) | String | Nil = nil,
+                   is_indented_syntax_src : Bool = false) : String
     verify_bin_path!
 
     args = ["--stdin", "--style=#{style}"]
+    args << "--indented" if is_indented_syntax_src
+
     if source_map_embed
       args << "--embed-source-map"
     else
@@ -40,8 +44,16 @@ module Sass
     # Ensures the source map points to the correct original file path
     args << "--stdin-file-path=#{source_path}" if source_path
 
-    load_paths.try &.each do |path|
-      args << "--load-path=#{path}"
+    # Combine load_paths and include_path for API compatibility
+    all_paths = [] of String
+    all_paths.concat(load_paths) if load_paths
+    case include_path
+    when String        then all_paths << include_path
+    when Array(String) then all_paths.concat(include_path)
+    end
+
+    all_paths.each do |lp|
+      args << "--load-path=#{lp}"
     end
 
     input = IO::Memory.new(source)
@@ -62,7 +74,9 @@ module Sass
                         style : String = "expanded",
                         load_paths : Array(String)? = nil,
                         source_map : Bool = false,
-                        source_map_embed : Bool = false) : String
+                        source_map_embed : Bool = false,
+                        include_path : Array(String) | String | Nil = nil,
+                        is_indented_syntax_src : Bool = false) : String
     verify_bin_path!
 
     args = [path, "--style=#{style}"]
@@ -72,8 +86,15 @@ module Sass
       args << (source_map ? "--source-map" : "--no-source-map")
     end
 
-    load_paths.try &.each do |load_path|
-      args << "--load-path=#{load_path}"
+    all_paths = [] of String
+    all_paths.concat(load_paths) if load_paths
+    case include_path
+    when String        then all_paths << include_path
+    when Array(String) then all_paths.concat(include_path)
+    end
+
+    all_paths.each do |lp|
+      args << "--load-path=#{lp}"
     end
 
     output = IO::Memory.new
@@ -95,7 +116,9 @@ module Sass
                              style : String = "expanded",
                              load_paths : Array(String)? = nil,
                              source_map : Bool = false,
-                             source_map_embed : Bool = false) : Nil
+                             source_map_embed : Bool = false,
+                             include_path : Array(String) | String | Nil = nil,
+                             is_indented_syntax_src : Bool = false) : Nil
     verify_bin_path!
 
     args = ["#{input_dir}:#{output_dir}", "--style=#{style}"]
@@ -106,8 +129,15 @@ module Sass
       args << (source_map ? "--source-map" : "--no-source-map")
     end
 
-    load_paths.try &.each do |path|
-      args << "--load-path=#{path}"
+    all_paths = [] of String
+    all_paths.concat(load_paths) if load_paths
+    case include_path
+    when String        then all_paths << include_path
+    when Array(String) then all_paths.concat(include_path)
+    end
+
+    all_paths.each do |lp|
+      args << "--load-path=#{lp}"
     end
 
     error = IO::Memory.new
