@@ -26,26 +26,13 @@ module Sass
                    source_map : Bool = false,
                    source_map_embed : Bool = false,
                    source_path : String? = nil,
-                   include_path : Array(String) | String | Nil = nil,
+                   include_path : (Array(String) | String)? = nil,
                    is_indented_syntax_src : Bool = false) : String
-    verify_bin_path!
-
     args = ["--stdin"]
-    args += common_args(style, source_map, source_map_embed, load_paths, include_path)
-    args << "--indented" if is_indented_syntax_src
+    args += common_args(style, source_map, source_map_embed, load_paths, include_path, is_indented_syntax_src)
     args << "--stdin-file-path=#{source_path}" if source_path
 
-    input = IO::Memory.new(source)
-    output = IO::Memory.new
-    error = IO::Memory.new
-
-    status = Process.run(@@bin_path, args: args, input: input, output: output, error: error)
-
-    if status.success?
-      output.to_s
-    else
-      raise CompilationError.new("Sass Compilation Failed:\nSTDOUT: #{output}\nSTDERR: #{error}")
-    end
+    execute_sass(args, input: IO::Memory.new(source))
   end
 
   def self.compile_file(path : String,
@@ -53,10 +40,8 @@ module Sass
                         load_paths : Array(String)? = nil,
                         source_map : Bool = false,
                         source_map_embed : Bool = false,
-                        include_path : Array(String) | String | Nil = nil,
+                        include_path : (Array(String) | String)? = nil,
                         is_indented_syntax_src : Bool = false) : String
-    verify_bin_path!
-
     # Handle Jekyll-style YAML front matter by stripping it before compilation
     if File.exists?(path)
       content = File.read(path)
@@ -78,19 +63,9 @@ module Sass
     end
 
     args = [path]
-    args += common_args(style, source_map, source_map_embed, load_paths, include_path)
-    args << "--indented" if is_indented_syntax_src
+    args += common_args(style, source_map, source_map_embed, load_paths, include_path, is_indented_syntax_src)
 
-    output = IO::Memory.new
-    error = IO::Memory.new
-
-    status = Process.run(@@bin_path, args: args, output: output, error: error)
-
-    if status.success?
-      output.to_s
-    else
-      raise CompilationError.new("Sass Compilation Failed for #{path}:\nSTDOUT: #{output}\nSTDERR: #{error}")
-    end
+    execute_sass(args, error_prefix: "Sass Compilation Failed for #{path}")
   end
 
   def self.compile_directory(input_dir : String,
@@ -99,31 +74,37 @@ module Sass
                              load_paths : Array(String)? = nil,
                              source_map : Bool = false,
                              source_map_embed : Bool = false,
-                             include_path : Array(String) | String | Nil = nil,
+                             include_path : (Array(String) | String)? = nil,
                              is_indented_syntax_src : Bool = false) : Nil
-    verify_bin_path!
-
     args = ["#{input_dir}:#{output_dir}"]
-    args += common_args(style, source_map, source_map_embed, load_paths, include_path)
-    args << "--indented" if is_indented_syntax_src
+    args += common_args(style, source_map, source_map_embed, load_paths, include_path, is_indented_syntax_src)
 
-    error = IO::Memory.new
-    status = Process.run(@@bin_path, args: args, error: error)
-
-    unless status.success?
-      raise CompilationError.new("Sass Batch Compilation Failed:\n#{error}")
-    end
+    execute_sass(args, error_prefix: "Sass Batch Compilation Failed")
+    nil
   end
 
-  private def self.common_args(style, source_map, source_map_embed, load_paths, include_path)
+  private def self.common_args(style, source_map, source_map_embed, load_paths, include_path, is_indented_syntax_src)
     args = ["--style=#{style}"]
     if source_map_embed
       args << "--embed-source-map"
     else
       args << (source_map ? "--source-map" : "--no-source-map")
     end
+    args << "--indented" if is_indented_syntax_src
     resolve_load_paths(load_paths, include_path).each { |path| args << "--load-path=#{path}" }
     args
+  end
+
+  private def self.execute_sass(args : Array(String), input : IO? = nil, error_prefix : String = "Sass Compilation Failed") : String
+    verify_bin_path!
+    output, error = IO::Memory.new, IO::Memory.new
+    status = Process.run(@@bin_path, args: args, input: input || Process::Redirect::Close, output: output, error: error)
+
+    if status.success?
+      output.to_s
+    else
+      raise Sass::CompilationError.new("#{error_prefix}:\nSTDOUT: #{output}\nSTDERR: #{error}")
+    end
   end
 
   private def self.resolve_load_paths(load_paths, include_path)
@@ -143,7 +124,7 @@ module Sass
            else
              Process.find_executable(@@bin_path)
            end
-    raise CompilationError.new("Sass binary not found.") unless path
+    raise Sass::CompilationError.new("Sass binary not found.") unless path
     @@bin_path = path
     check_version!(@@bin_path)
     @@version_verified = true
@@ -158,13 +139,13 @@ module Sass
         current_version = SemanticVersion.parse(version_str)
         required_version = SemanticVersion.parse(@@min_version)
         if current_version < required_version
-          raise CompilationError.new("Sass version mismatch at '#{path}': Found #{current_version}, but version >= #{required_version} is required.")
+          raise Sass::CompilationError.new("Sass version mismatch at '#{path}': Found #{current_version}, but version >= #{required_version} is required.")
         end
       rescue ex : ArgumentError
-        raise CompilationError.new("Could not parse Sass version string '#{version_str}': #{ex.message}")
+        raise Sass::CompilationError.new("Could not parse Sass version string '#{version_str}': #{ex.message}")
       end
     else
-      raise CompilationError.new("Failed to determine Sass version from '#{path}':\n#{stderr}")
+      raise Sass::CompilationError.new("Failed to determine Sass version from '#{path}':\n#{stderr}")
     end
   end
 end
