@@ -1,10 +1,5 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [0.2.0] - 2026-01-03
 
 ### Added
@@ -14,19 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Improved sass.cr API compatibility with additional compatibility features
 
-### Fixed
-- Updated GitHub workflow configurations for better CI/CD pipeline
-
 ## [0.1.0] - 2026-01-03
 
 ### Added
 - Initial release of sassd.cr
-- Modern, high-performance Crystal wrapper for the Dart Sass CLI
+    - Modern, high-performance Crystal wrapper for the Dart Sass CLI
 - Full API compatibility with sass.cr (drop-in replacement)
-- `Sass.compile()` - Compile SCSS strings to CSS
-- `Sass.compile_file()` - Compile SCSS files to CSS
-- `Sass.compile_directory()` - Batch compile entire directories
-- `Sass::Compiler` class - Reusable compiler instances for efficient repeated compilations
+    - `Sass.compile()` - Compile SCSS strings to CSS
+    - `Sass.compile_file()` - Compile SCSS files to CSS
+    - `Sass.compile_directory()` - Batch compile entire directories
+    - `Sass::Compiler` class - Reusable compiler instances for efficient repeated compilations
 - Automatic binary download for Dart Sass with zero-config installation
 - Cross-platform support:
   - Linux (arm64/amd64)
@@ -42,16 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `load_paths` - Additional import paths
   - `include_path` - Include directory path
 - Comprehensive test suite
-- Migration guide (MIGRATION.md)
+- Migration guide (MIGRATION.md) for migrating from sass.cr to sassd.cr
 - Makefile with targets for:
   - `make sass` - Download Dart Sass binary
   - `make test` - Run tests
   - `make clean-sass` - Remove downloaded binaries
-
-### Changed
-- Refactored code to reduce duplication and improve maintainability
-- Applied Ameba linting fixes for code quality
-
-### Fixed
-- Code formatting and style issues
-- README documentation and code examples
