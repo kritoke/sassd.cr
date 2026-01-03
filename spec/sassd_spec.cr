@@ -2,6 +2,54 @@ require "./spec_helper"
 require "file_utils"
 
 describe Sass do
+  describe Sass::Compiler do
+    it "creates a reusable compiler with options" do
+      compiler = Sass::Compiler.new(
+        style: "compressed",
+        source_map: false,
+        load_paths: [] of String
+      )
+      compiler.style.should eq("compressed")
+      compiler.source_map.should eq(false)
+    end
+
+    it "compiles using a compiler instance" do
+      compiler = Sass::Compiler.new(style: "compressed")
+      css = compiler.compile(".a { color: red; }")
+      css.should eq(".a{color:red}\n")
+    end
+
+    it "compiles files using a compiler instance" do
+      File.write("spec/test_compiler.scss", ".file { content: 'compiler'; }")
+      begin
+        compiler = Sass::Compiler.new(style: "compressed")
+        css = compiler.compile_file("spec/test_compiler.scss")
+        css.should contain("content:\"compiler\"")
+      ensure
+        File.delete("spec/test_compiler.scss") if File.exists?("spec/test_compiler.scss")
+      end
+    end
+
+    it "maintains consistent options across compilations" do
+      compiler = Sass::Compiler.new(style: "compressed")
+      css1 = compiler.compile(".a { color: red; }")
+      css2 = compiler.compile(".b { color: blue; }")
+      css1.should eq(".a{color:red}\n")
+      css2.should eq(".b{color:blue}\n")
+    end
+
+    it "allows modifying options after creation" do
+      compiler = Sass::Compiler.new(style: "compressed")
+      css_compressed = compiler.compile(".a { color: red; }")
+      css_compressed.should eq(".a{color:red}\n")
+
+      compiler.style = "expanded"
+      css_expanded = compiler.compile(".a { color: red; }")
+      css_expanded.should contain("color: red")
+      css_expanded.should_not eq(css_compressed)
+    end
+  end
+
   describe ".compile" do
     it "compiles basic SCSS" do
       css = Sass.compile(".a { color: red; }")

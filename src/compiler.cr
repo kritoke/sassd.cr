@@ -19,7 +19,52 @@ module Sass
   # The minimum required version of Dart Sass.
   class_property min_version : String = "1.97.1"
 
-  # API compatible with sass.cr
+  # A reusable compiler instance for API compatibility with sass.cr
+  class Compiler
+    include Sass
+
+    property style : String
+    property source_map : Bool
+    property source_map_embed : Bool
+    property load_paths : Array(String)
+    property include_path : String?
+
+    def initialize(@style : String = "expanded",
+                   @source_map : Bool = false,
+                   @source_map_embed : Bool = false,
+                   @load_paths : Array(String) = [] of String,
+                   @include_path : String? = nil)
+    end
+
+    def compile(source : String,
+                is_indented_syntax_src : Bool = false,
+                source_path : String? = nil) : String
+      Sass.compile(
+        source: source,
+        style: @style,
+        load_paths: @load_paths.empty? ? nil : @load_paths,
+        source_map: @source_map,
+        source_map_embed: @source_map_embed,
+        source_path: source_path,
+        include_path: @include_path,
+        is_indented_syntax_src: is_indented_syntax_src
+      )
+    end
+
+    def compile_file(path : String,
+                     is_indented_syntax_src : Bool = false) : String
+      Sass.compile_file(
+        path: path,
+        style: @style,
+        load_paths: @load_paths.empty? ? nil : @load_paths,
+        source_map: @source_map,
+        source_map_embed: @source_map_embed,
+        include_path: @include_path,
+        is_indented_syntax_src: is_indented_syntax_src
+      )
+    end
+  end
+
   def self.compile(source : String,
                    style : String = "expanded",
                    load_paths : Array(String)? = nil,
@@ -29,8 +74,10 @@ module Sass
                    include_path : (Array(String) | String)? = nil,
                    is_indented_syntax_src : Bool = false) : String
     args = ["--stdin"]
-    args += common_args(style, source_map, source_map_embed, load_paths, include_path, is_indented_syntax_src)
-    args << "--stdin-file-path=#{source_path}" if source_path
+    # Note: source_path is not supported in current Dart Sass, so we ignore it
+    # Note: source_map with stdin requires embed_source_map
+    effective_source_map_embed = source_map_embed || source_map
+    args += common_args(style, source_map, effective_source_map_embed, load_paths, include_path, is_indented_syntax_src, for_stdin: true)
 
     execute_sass(args, input: IO::Memory.new(source))
   end
@@ -48,20 +95,45 @@ module Sass
       if content.starts_with?("---")
         parts = content.split("---", 3)
         if parts.size == 3
-          return compile(
-            source: parts[2],
-            style: style,
-            load_paths: load_paths,
-            source_map: source_map,
-            source_map_embed: source_map_embed,
-            source_path: path,
-            include_path: include_path,
-            is_indented_syntax_src: is_indented_syntax_src
-          )
+          # Use file compilation for better source map support
+          # The YAML front matter is already stripped, so just write temp file
+          temp_file = File.tempfile(".scss")
+          begin
+            File.write(temp_file.path, parts[2])
+            compile_file_internal(
+              temp_file.path,
+              style: style,
+              load_paths: load_paths,
+              source_map: source_map,
+              source_map_embed: source_map_embed,
+              include_path: include_path,
+              is_indented_syntax_src: is_indented_syntax_src
+            )
+          ensure
+            File.delete(temp_file.path) if File.exists?(temp_file.path)
+          end
         end
       end
     end
 
+    compile_file_internal(
+      path,
+      style: style,
+      load_paths: load_paths,
+      source_map: source_map,
+      source_map_embed: source_map_embed,
+      include_path: include_path,
+      is_indented_syntax_src: is_indented_syntax_src
+    )
+  end
+
+  private def self.compile_file_internal(path : String,
+                                         style : String = "expanded",
+                                         load_paths : Array(String)? = nil,
+                                         source_map : Bool = false,
+                                         source_map_embed : Bool = false,
+                                         include_path : (Array(String) | String)? = nil,
+                                         is_indented_syntax_src : Bool = false) : String
     args = [path]
     args += common_args(style, source_map, source_map_embed, load_paths, include_path, is_indented_syntax_src)
 
@@ -83,12 +155,15 @@ module Sass
     nil
   end
 
-  private def self.common_args(style, source_map, source_map_embed, load_paths, include_path, is_indented_syntax_src)
+  private def self.common_args(style, source_map, source_map_embed, load_paths, include_path, is_indented_syntax_src, for_stdin = false)
     args = ["--style=#{style}"]
     if source_map_embed
       args << "--embed-source-map"
+    elsif source_map && !for_stdin
+      # Don't generate source maps for stdin without embedding (not supported)
+      args << "--source-map"
     else
-      args << (source_map ? "--source-map" : "--no-source-map")
+      args << "--no-source-map"
     end
     args << "--indented" if is_indented_syntax_src
     resolve_load_paths(load_paths, include_path).each { |path| args << "--load-path=#{path}" }

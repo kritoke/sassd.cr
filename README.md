@@ -7,8 +7,10 @@ A modern, high-performance Crystal wrapper for the Dart Sass CLI.
 ## Features
 
 *   **Modern Sass Support**: Full support for the latest Sass features and syntax.
-*   **API Compatibility**: Designed as a drop-in replacement for `sass.cr`.
+*   **Full API Compatibility**: Drop-in replacement for `sass.cr` - just change the require from `"sass"` to `"sassd"`.
+*   **Reusable Compiler Instance**: Create a `Sass::Compiler` instance for efficient repeated compilations with consistent options.
 *   **Zero-Config Installation**: Automatically downloads the correct Dart Sass binary for your OS and Architecture.
+*   **Cross-Platform Support**: Works on Linux (arm64/amd64), macOS, and FreeBSD using precompiled Dart Sass binaries.
 *   **Batch Compilation**: Efficiently compile entire directories in a single process—perfect for static site generators.
 *   **Flexible Output**: Control output styles (`expanded`, `compressed`) and source map generation.
 *   **CLI Tool**: Includes a standalone `sassd` executable for quick compilations.
@@ -74,6 +76,27 @@ Sass.compile_directory(
 )
 ```
 
+### Using a Reusable Compiler
+
+For API compatibility with `sass.cr`, you can create a reusable `Sass::Compiler` instance:
+
+```crystal
+compiler = Sass::Compiler.new(
+  style: "compressed",
+  source_map: true,
+  load_paths: ["vendor/stylesheets"],
+  include_path: "includes"
+)
+
+# Compile multiple files with the same options
+css_application = compiler.compile_file("application.scss")
+css_layout = compiler.compile("@import 'layout';")
+
+# Modify options dynamically
+compiler.style = "expanded"
+compiler.load_paths << "additional/styles"
+```
+
 ### Configuration
 
 You can manually point the library to a specific Sass binary:
@@ -81,6 +104,16 @@ You can manually point the library to a specific Sass binary:
 ```crystal
 Sass.bin_path = "/usr/local/bin/sass"
 ```
+
+### API Compatibility with sass.cr
+
+This library is designed as a drop-in replacement for `sass.cr`. To migrate:
+
+1. Change `require "sass"` to `require "sassd"` in your code
+2. No other code changes needed - all methods and parameters are compatible
+3. Optionally use the `Sass::Compiler` class for reusable compiler instances
+
+For detailed migration instructions, see [MIGRATION.md](MIGRATION.md).
 
 ## CLI Tool
 
@@ -109,6 +142,14 @@ dependencies:
   sassd:
     github: kritoke/sassd.cr
 ```
+
+## Testing & Platform Notes
+
+**Note**: This library has been primarily tested on macOS (arm64). While it includes support for Linux (arm64/amd64) and FreeBSD (arm64/amd64) through the Makefile's platform detection and precompiled Dart Sass binary downloads, extensive testing on those platforms has not yet been performed. If you encounter any issues on these platforms, please open an issue.
+
+## Acknowledgments
+
+This library is heavily inspired by and designed to be API-compatible with [sass.cr](https://github.com/straight-shoota/sass.cr) by [Johannes Müller](https://github.com/straight-shoota). The original sass.cr library provided an excellent API design for Sass compilation in Crystal, and this implementation aims to preserve that experience while leveraging the modern Dart Sass implementation.
 
 ## Contributing
 

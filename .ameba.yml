@@ -1,0 +1,6 @@
+# Ameba configuration for sassd.cr
+
+# Disable QueryBoolMethods rule to maintain API compatibility with sass.cr
+# The original sass.cr library uses regular boolean properties, not query methods
+Naming/QueryBoolMethods:
+  Enabled: false
