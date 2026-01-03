@@ -18,6 +18,12 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install dependencies
       run: shards install
+    - name: Install system dependencies
+      run: apt-get update && apt-get install -y curl wget
+    - name: Install Node.js and npm
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
     - name: Install Dart Sass
       run: make sass || npm install -g sass
     - name: Run tests
