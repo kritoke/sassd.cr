@@ -15,6 +15,8 @@ ifeq ($(OS),Darwin)
   DART_OS := macos
 else ifeq ($(OS),Linux)
   DART_OS := linux
+else ifeq ($(OS),FreeBSD)
+  DART_OS := linux
 else ifeq ($(OS),Windows_NT)
   DART_OS := windows
 else
@@ -69,7 +71,7 @@ $(SASS_BIN): ensure-bin
 	tmpdir=$$(mktemp -d); \
 	trap 'rm -rf "$$tmpdir"' EXIT; \
 	cd $$tmpdir; \
-	if [ "$(UNAME_S)" = "Darwin" ] || [ "$(UNAME_S)" = "Linux" ]; then \
+	if [ "$(UNAME_S)" = "Darwin" ] || [ "$(UNAME_S)" = "Linux" ] || [ "$(UNAME_S)" = "FreeBSD" ]; then \
 	  echo "Downloading $(DART_URL)"; \
 	  if $(CURL) -o $(DART_TGZ) "$(DART_URL)"; then \
 		mkdir dart && tar -xzf $(DART_TGZ) -C dart --strip-components=1; \
