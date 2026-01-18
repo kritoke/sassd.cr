@@ -100,7 +100,7 @@ module Sass
           temp_file = File.tempfile(".scss")
           begin
             File.write(temp_file.path, parts[2])
-            compile_file_internal(
+            return compile_file_internal(
               temp_file.path,
               style: style,
               load_paths: load_paths,

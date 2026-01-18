@@ -176,8 +176,8 @@ describe "API Compatibility with sass.cr" do
         include_path: nil
       )
       compiler.style.should eq("compressed")
-      compiler.source_map.should eq(true)
-      compiler.source_map_embed.should eq(false)
+      compiler.source_map.should be_true
+      compiler.source_map_embed.should be_false
     end
 
     it "supports Compiler.compile with sass.cr parameters" do

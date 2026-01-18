@@ -10,7 +10,7 @@ describe Sass do
         load_paths: [] of String
       )
       compiler.style.should eq("compressed")
-      compiler.source_map.should eq(false)
+      compiler.source_map.should be_false
     end
 
     it "compiles using a compiler instance" do
