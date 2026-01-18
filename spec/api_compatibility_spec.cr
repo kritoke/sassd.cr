@@ -284,6 +284,81 @@ describe "API Compatibility with sass.cr" do
     end
   end
 
+  describe "New API features (beyond sass.cr compatibility)" do
+    it "supports additional compiler properties" do
+      compiler = Sass::Compiler.new(
+        style: "compressed",
+        source_map: true,
+        source_map_embed: false,
+        source_map_urls: "absolute",
+        embed_sources: true,
+        charset: false,
+        error_css: false,
+        quiet: true,
+        quiet_deps: true,
+        verbose: true,
+        load_paths: [] of String,
+        include_path: nil
+      )
+
+      compiler.style.should eq("compressed")
+      compiler.source_map.should be_true
+      compiler.source_map_embed.should be_false
+      compiler.source_map_urls.should eq("absolute")
+      compiler.embed_sources.should be_true
+      compiler.charset.should be_false
+      compiler.error_css.should be_false
+      compiler.quiet.should be_true
+      compiler.quiet_deps.should be_true
+      compiler.verbose.should be_true
+    end
+
+    it "supports modifying new compiler properties" do
+      compiler = Sass::Compiler.new
+
+      compiler.source_map_urls = "absolute"
+      compiler.embed_sources = true
+      compiler.charset = false
+      compiler.error_css = false
+      compiler.quiet = true
+      compiler.quiet_deps = true
+      compiler.verbose = true
+
+      compiler.source_map_urls.should eq("absolute")
+      compiler.embed_sources.should be_true
+      compiler.charset.should be_false
+      compiler.error_css.should be_false
+      compiler.quiet.should be_true
+      compiler.quiet_deps.should be_true
+      compiler.verbose.should be_true
+    end
+
+    it "supports new module-level compile options" do
+      css = Sass.compile(".test { color: red; }",
+        source_map_embed: true,
+        source_map_urls: "absolute",
+        embed_sources: true,
+        charset: false,
+        quiet: true)
+      css.should contain("color: red")
+    end
+
+    it "supports new module-level compile_file options" do
+      File.write("spec/new_features_test.scss", ".test { color: blue; }")
+      begin
+        css = Sass.compile_file("spec/new_features_test.scss",
+          source_map_embed: true,
+          source_map_urls: "absolute",
+          embed_sources: true,
+          charset: false,
+          quiet: true)
+        css.should contain("color: blue")
+      ensure
+        File.delete("spec/new_features_test.scss") if File.exists?("spec/new_features_test.scss")
+      end
+    end
+  end
+
   describe "Error handling" do
     it "raises Sass::CompilationError for invalid syntax" do
       expect_raises(Sass::CompilationError) do

@@ -26,12 +26,26 @@ module Sass
     property style : String
     property source_map : Bool
     property source_map_embed : Bool
+    property source_map_urls : String # "relative" or "absolute"
+    property embed_sources : Bool
+    property charset : Bool
+    property error_css : Bool
+    property quiet : Bool
+    property quiet_deps : Bool
+    property verbose : Bool
     property load_paths : Array(String)
     property include_path : String?
 
     def initialize(@style : String = "expanded",
                    @source_map : Bool = false,
                    @source_map_embed : Bool = false,
+                   @source_map_urls : String = "relative",
+                   @embed_sources : Bool = false,
+                   @charset : Bool = true,
+                   @error_css : Bool = true,
+                   @quiet : Bool = false,
+                   @quiet_deps : Bool = false,
+                   @verbose : Bool = false,
                    @load_paths : Array(String) = [] of String,
                    @include_path : String? = nil)
     end
@@ -45,6 +59,13 @@ module Sass
         load_paths: @load_paths.empty? ? nil : @load_paths,
         source_map: @source_map,
         source_map_embed: @source_map_embed,
+        source_map_urls: @source_map_urls,
+        embed_sources: @embed_sources,
+        charset: @charset,
+        error_css: @error_css,
+        quiet: @quiet,
+        quiet_deps: @quiet_deps,
+        verbose: @verbose,
         source_path: source_path,
         include_path: @include_path,
         is_indented_syntax_src: is_indented_syntax_src
@@ -59,6 +80,13 @@ module Sass
         load_paths: @load_paths.empty? ? nil : @load_paths,
         source_map: @source_map,
         source_map_embed: @source_map_embed,
+        source_map_urls: @source_map_urls,
+        embed_sources: @embed_sources,
+        charset: @charset,
+        error_css: @error_css,
+        quiet: @quiet,
+        quiet_deps: @quiet_deps,
+        verbose: @verbose,
         include_path: @include_path,
         is_indented_syntax_src: is_indented_syntax_src
       )
@@ -70,6 +98,13 @@ module Sass
                    load_paths : Array(String)? = nil,
                    source_map : Bool = false,
                    source_map_embed : Bool = false,
+                   source_map_urls : String = "relative",
+                   embed_sources : Bool = false,
+                   charset : Bool = true,
+                   error_css : Bool = true,
+                   quiet : Bool = false,
+                   quiet_deps : Bool = false,
+                   verbose : Bool = false,
                    source_path : String? = nil,
                    include_path : (Array(String) | String)? = nil,
                    is_indented_syntax_src : Bool = false) : String
@@ -77,7 +112,7 @@ module Sass
     # Note: source_path is not supported in current Dart Sass, so we ignore it
     # Note: source_map with stdin requires embed_source_map
     effective_source_map_embed = source_map_embed || source_map
-    args += common_args(style, source_map, effective_source_map_embed, load_paths, include_path, is_indented_syntax_src, for_stdin: true)
+    args += common_args(style, source_map, effective_source_map_embed, source_map_urls, embed_sources, charset, error_css, quiet, quiet_deps, verbose, load_paths, include_path, is_indented_syntax_src, for_stdin: true)
 
     execute_sass(args, input: IO::Memory.new(source))
   end
@@ -87,6 +122,13 @@ module Sass
                         load_paths : Array(String)? = nil,
                         source_map : Bool = false,
                         source_map_embed : Bool = false,
+                        source_map_urls : String = "relative",
+                        embed_sources : Bool = false,
+                        charset : Bool = true,
+                        error_css : Bool = true,
+                        quiet : Bool = false,
+                        quiet_deps : Bool = false,
+                        verbose : Bool = false,
                         include_path : (Array(String) | String)? = nil,
                         is_indented_syntax_src : Bool = false) : String
     # Handle Jekyll-style YAML front matter by stripping it before compilation
@@ -106,6 +148,13 @@ module Sass
               load_paths: load_paths,
               source_map: source_map,
               source_map_embed: source_map_embed,
+              source_map_urls: source_map_urls,
+              embed_sources: embed_sources,
+              charset: charset,
+              error_css: error_css,
+              quiet: quiet,
+              quiet_deps: quiet_deps,
+              verbose: verbose,
               include_path: include_path,
               is_indented_syntax_src: is_indented_syntax_src
             )
@@ -122,6 +171,13 @@ module Sass
       load_paths: load_paths,
       source_map: source_map,
       source_map_embed: source_map_embed,
+      source_map_urls: source_map_urls,
+      embed_sources: embed_sources,
+      charset: charset,
+      error_css: error_css,
+      quiet: quiet,
+      quiet_deps: quiet_deps,
+      verbose: verbose,
       include_path: include_path,
       is_indented_syntax_src: is_indented_syntax_src
     )
@@ -132,10 +188,17 @@ module Sass
                                          load_paths : Array(String)? = nil,
                                          source_map : Bool = false,
                                          source_map_embed : Bool = false,
+                                         source_map_urls : String = "relative",
+                                         embed_sources : Bool = false,
+                                         charset : Bool = true,
+                                         error_css : Bool = true,
+                                         quiet : Bool = false,
+                                         quiet_deps : Bool = false,
+                                         verbose : Bool = false,
                                          include_path : (Array(String) | String)? = nil,
                                          is_indented_syntax_src : Bool = false) : String
     args = [path]
-    args += common_args(style, source_map, source_map_embed, load_paths, include_path, is_indented_syntax_src)
+    args += common_args(style, source_map, source_map_embed, source_map_urls, embed_sources, charset, error_css, quiet, quiet_deps, verbose, load_paths, include_path, is_indented_syntax_src)
 
     execute_sass(args, error_prefix: "Sass Compilation Failed for #{path}")
   end
@@ -146,16 +209,23 @@ module Sass
                              load_paths : Array(String)? = nil,
                              source_map : Bool = false,
                              source_map_embed : Bool = false,
+                             source_map_urls : String = "relative",
+                             embed_sources : Bool = false,
+                             charset : Bool = true,
+                             error_css : Bool = true,
+                             quiet : Bool = false,
+                             quiet_deps : Bool = false,
+                             verbose : Bool = false,
                              include_path : (Array(String) | String)? = nil,
                              is_indented_syntax_src : Bool = false) : Nil
     args = ["#{input_dir}:#{output_dir}"]
-    args += common_args(style, source_map, source_map_embed, load_paths, include_path, is_indented_syntax_src)
+    args += common_args(style, source_map, source_map_embed, source_map_urls, embed_sources, charset, error_css, quiet, quiet_deps, verbose, load_paths, include_path, is_indented_syntax_src)
 
     execute_sass(args, error_prefix: "Sass Batch Compilation Failed")
     nil
   end
 
-  private def self.common_args(style, source_map, source_map_embed, load_paths, include_path, is_indented_syntax_src, for_stdin = false)
+  private def self.common_args(style, source_map, source_map_embed, source_map_urls, embed_sources, charset, error_css, quiet, quiet_deps, verbose, load_paths, include_path, is_indented_syntax_src, for_stdin = false)
     args = ["--style=#{style}"]
     if source_map_embed
       args << "--embed-source-map"
@@ -165,6 +235,23 @@ module Sass
     else
       args << "--no-source-map"
     end
+
+    # Source map options
+    args << "--source-map-urls=#{source_map_urls}" if source_map_urls != "relative"
+    args << "--embed-sources" if embed_sources
+
+    # Charset control
+    args << "--no-charset" unless charset
+
+    # Error CSS generation
+    args << "--no-error-css" unless error_css
+
+    # Warning/deprecation options
+    args << "--quiet" if quiet
+    args << "--quiet-deps" if quiet_deps
+    args << "--verbose" if verbose
+
+    # Syntax and load paths
     args << "--indented" if is_indented_syntax_src
     resolve_load_paths(load_paths, include_path).each { |path| args << "--load-path=#{path}" }
     args

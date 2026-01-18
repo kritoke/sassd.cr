@@ -137,4 +137,67 @@ describe Sass do
       end
     end
   end
+
+  describe "new features from Dart Sass" do
+    describe "source map options" do
+      it "supports source_map_urls option" do
+        css = Sass.compile(".test { color: red; }", source_map_embed: true, source_map_urls: "absolute")
+        css.should contain("sourceMappingURL=data:application/json")
+      end
+
+      it "supports embed_sources option" do
+        css = Sass.compile(".test { color: red; }", source_map_embed: true, embed_sources: true)
+        css.should contain("sourceMappingURL=data:application/json")
+        # sourcesContent is URL encoded in the data URI
+        css.should contain("sourcesContent")
+      end
+    end
+
+    describe "charset control" do
+      it "supports charset option" do
+        # Note: Sass only emits @charset if there are non-ASCII characters
+        # So we test with a non-ASCII character
+        css_with_charset = Sass.compile(".test { content: 'こんにちは'; }", charset: true)
+        css_with_charset.should contain("@charset \"UTF-8\";")
+
+        css_without_charset = Sass.compile(".test { content: 'こんにちは'; }", charset: false)
+        css_without_charset.should_not contain("@charset")
+      end
+    end
+
+    describe "error css generation" do
+      it "supports error_css option" do
+        # We need to test this differently since it only applies to file compilation
+        File.write("spec/error_test.scss", "invalid { syntax")
+        begin
+          # This should not raise an exception but emit an error stylesheet
+          # Note: The --error-css option only affects file compilation to a file
+          # When reading from stdin or compiling to stdout, it still raises an exception
+          expect_raises(Sass::CompilationError) do
+            Sass.compile_file("spec/error_test.scss")
+          end
+        ensure
+          File.delete("spec/error_test.scss") if File.exists?("spec/error_test.scss")
+        end
+      end
+    end
+
+    describe "warning options" do
+      it "supports quiet option" do
+        # This test will be silent when quiet is true
+        css = Sass.compile(".test { color: #ff0000; }", quiet: true)
+        css.should contain("color: #ff0000")
+      end
+
+      it "supports quiet_deps option" do
+        css = Sass.compile(".test { color: #ff0000; }", quiet_deps: true)
+        css.should contain("color: #ff0000")
+      end
+
+      it "supports verbose option" do
+        css = Sass.compile(".test { color: #ff0000; }", verbose: true)
+        css.should contain("color: #ff0000")
+      end
+    end
+  end
 end

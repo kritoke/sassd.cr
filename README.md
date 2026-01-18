@@ -10,14 +10,18 @@ A modern, high-performance Crystal wrapper for the Dart Sass CLI.
 
 ## Features
 
-*   **Modern Sass Support**: Full support for the latest Sass features and syntax.
-*   **Full API Compatibility**: Drop-in replacement for `sass.cr` - just change the require from `"sass"` to `"sassd"`.
-*   **Reusable Compiler Instance**: Create a `Sass::Compiler` instance for efficient repeated compilations with consistent options.
-*   **Zero-Config Installation**: Automatically downloads the correct Dart Sass binary for your OS and Architecture.
-*   **Cross-Platform Support**: Works on Linux (arm64/amd64), macOS, and FreeBSD using precompiled Dart Sass binaries.
-*   **Batch Compilation**: Efficiently compile entire directories in a single process—perfect for static site generators.
-*   **Flexible Output**: Control output styles (`expanded`, `compressed`) and source map generation.
-*   **CLI Tool**: Includes a standalone `sassd` executable for quick compilations.
+* **Modern Sass Support**: Full support for the latest Sass features and syntax.
+* **Full API Compatibility**: Drop-in replacement for `sass.cr` - just change the require from `"sass"` to `"sassd"`.
+* **Reusable Compiler Instance**: Create a `Sass::Compiler` instance for efficient repeated compilations with consistent options.
+* **Zero-Config Installation**: Automatically downloads the correct Dart Sass binary for your OS and Architecture.
+* **Cross-Platform Support**: Works on Linux (arm64/amd64), macOS, and FreeBSD using precompiled Dart Sass binaries.
+* **Batch Compilation**: Efficiently compile entire directories in a single process—perfect for static site generators.
+* **Flexible Output**: Control output styles (`expanded`, `compressed`) and source map generation.
+* **Advanced Source Map Control**: Customize source map behavior with options like `source_map_urls` (relative/absolute) and `embed_sources`.
+* **Charset Control**: Control whether to emit `@charset` or BOM for CSS with non-ASCII characters.
+* **Error Handling**: Option to emit error stylesheets when compilation fails instead of raising exceptions.
+* **Warning Control**: Fine-grained control over warning behavior with `quiet`, `quiet_deps`, and `verbose` options.
+* **CLI Tool**: Includes a standalone `sassd` executable for quick compilations.
 
 ## Installation
 
@@ -36,11 +40,13 @@ A modern, high-performance Crystal wrapper for the Dart Sass CLI.
 This shard requires the Dart Sass executable. By default, `shards install` will automatically download the standalone binary to your project's `bin/` folder.
 
 If you need to trigger the installation manually:
+
 ```bash
 make sass
 ```
 
 To build the included CLI tool:
+
 ```bash
 shards build
 ```
@@ -88,6 +94,12 @@ For API compatibility with `sass.cr`, you can create a reusable `Sass::Compiler`
 compiler = Sass::Compiler.new(
   style: "compressed",
   source_map: true,
+  source_map_embed: true,
+  source_map_urls: "absolute",
+  embed_sources: true,
+  charset: false,
+  error_css: false,
+  quiet: true,
   load_paths: ["vendor/stylesheets"],
   include_path: "includes"
 )
@@ -98,6 +110,8 @@ css_layout = compiler.compile("@import 'layout';")
 
 # Modify options dynamically
 compiler.style = "expanded"
+compiler.source_map_urls = "relative"
+compiler.embed_sources = false
 compiler.load_paths << "additional/styles"
 ```
 
@@ -165,4 +179,4 @@ This library is heavily inspired by and designed to be API-compatible with [sass
 
 ## Contributors
 
-- [kritoke](https://github.com/kritoke) - creator and maintainer
+* [kritoke](https://github.com/kritoke) - creator and maintainer
