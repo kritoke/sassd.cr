@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0] - 2026-01-18
+
+### Added
+- Enhanced compiler with new features from Dart Sass 1.97.1
+- Added `source_map_urls` property (supports "relative" or "absolute" URLs)
+- Added `embed_sources` property to embed sources in source maps
+- Added `charset` property to control @charset output
+- Added `error_css` property to control error stylesheet generation
+- Added `quiet`, `quiet_deps`, and `verbose` properties for warning control
+- Added support for all new options at module level (Sass.compile, Sass.compile_file, etc.)
+- Added comprehensive specs for new API features
+
+### Fixed
+- Critical bug in `compile_file` method when processing files with YAML front matter
+- Ameba Lint/SpecEqWithBoolOrNilLiteral warnings in specs
+
 ## [0.2.0] - 2026-01-03
 
 ### Added
