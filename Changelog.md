@@ -3,6 +3,7 @@
 ## [0.3.0] - 2026-01-18
 
 ### Added
+
 - Enhanced compiler with new features from Dart Sass 1.97.1
 - Added `source_map_urls` property (supports "relative" or "absolute" URLs)
 - Added `embed_sources` property to embed sources in source maps
@@ -13,28 +14,32 @@
 - Added comprehensive specs for new API features
 
 ### Fixed
+
 - Critical bug in `compile_file` method when processing files with YAML front matter
 - Ameba Lint/SpecEqWithBoolOrNilLiteral warnings in specs
 
 ## [0.2.0] - 2026-01-03
 
 ### Added
+
 - Added Crystal CI workflow configuration via GitHub Actions
 - Added dependencies step to CI workflow for proper setup
 
 ### Changed
+
 - Improved sass.cr API compatibility with additional compatibility features
 
 ## [0.1.0] - 2026-01-03
 
 ### Added
+
 - Initial release of sassd.cr
-    - Modern, high-performance Crystal wrapper for the Dart Sass CLI
+  - Modern, high-performance Crystal wrapper for the Dart Sass CLI
 - Full API compatibility with sass.cr (drop-in replacement)
-    - `Sass.compile()` - Compile SCSS strings to CSS
-    - `Sass.compile_file()` - Compile SCSS files to CSS
-    - `Sass.compile_directory()` - Batch compile entire directories
-    - `Sass::Compiler` class - Reusable compiler instances for efficient repeated compilations
+  - `Sass.compile()` - Compile SCSS strings to CSS
+  - `Sass.compile_file()` - Compile SCSS files to CSS
+  - `Sass.compile_directory()` - Batch compile entire directories
+  - `Sass::Compiler` class - Reusable compiler instances for efficient repeated compilations
 - Automatic binary download for Dart Sass with zero-config installation
 - Cross-platform support:
   - Linux (arm64/amd64)
