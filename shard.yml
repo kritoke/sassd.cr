@@ -1,5 +1,5 @@
 name: sassd
-version: 0.3.0
+version: 0.3.1
 crystal: '>= 1.19.0'
 authors:
   - kritoke <3081486+kritoke@users.noreply.github.com>
@@ -15,7 +15,6 @@ homepage: https://github.com/kritoke/sassd.cr
 development_dependencies:
   ameba:
     github: crystal-ameba/ameba
-    branch: master
 
 libraries:
   sass: "*"
@@ -25,4 +24,4 @@ targets:
     main: src/cli.cr
 
 scripts:
-  postinstall: make sass
+  postinstall: ./scripts/install-sass.sh

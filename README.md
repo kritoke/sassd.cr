@@ -39,16 +39,22 @@ A modern, high-performance Crystal wrapper for the Dart Sass CLI.
 
 This shard requires the Dart Sass executable. By default, `shards install` will automatically download the standalone binary to your project's `bin/` folder.
 
-If you need to trigger the installation manually:
+If you need to trigger the installation manually, use **Just**:
+
+### Using Just
+
+[Just](https://github.com/casey/just) is a modern command runner that provides better error handling and cross-platform compatibility.
 
 ```bash
-make sass
+# Install Just first (if not already installed)
+# Then run:
+just sass
 ```
 
 To build the included CLI tool:
 
 ```bash
-shards build
+just build
 ```
 
 ## Usage
@@ -143,27 +149,22 @@ After running `shards build`, you can use the `sassd` utility:
 
 This will attempt to download the standalone Dart Sass binary for your platform. If it cannot find a matching binary, it will fallback to an `npm` global installation.
 
-## Cleaning
+## Development Commands
 
-To remove the locally installed Sass binary and associated files from the `bin/` directory, run:
+The project uses **Justfile** for development tasks:
+
+### Using Just
 
 ```bash
-make clean-sass
-```
-
-## Installation
-
-Add this shard to your `shard.yml`:
-
-```yaml
-dependencies:
-  sassd:
-    github: kritoke/sassd.cr
+just sass          # Install Sass binary
+just clean-sass    # Remove local Sass binaries
+just test          # Run tests  
+just build         # Build the project
 ```
 
 ## Testing & Platform Notes
 
-**Note**: This library has been primarily tested on macOS (arm64). While it includes support for Linux (arm64/amd64) and FreeBSD (arm64/amd64) through the Makefile's platform detection and precompiled Dart Sass binary downloads, extensive testing on those platforms has not yet been performed. If you encounter any issues on these platforms, please open an issue.
+**Note**: This library has been primarily tested on macOS (arm64). While it includes support for Linux (arm64/amd64) and FreeBSD (arm64/amd64) through the build system's platform detection and precompiled Dart Sass binary downloads, extensive testing on those platforms has not yet been performed. If you encounter any issues on these platforms, please open an issue.
 
 ## Acknowledgments
 

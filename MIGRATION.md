@@ -118,10 +118,10 @@ The library automatically downloads the correct Dart Sass binary for your platfo
 
 ### Binary Installation
 
-`sassd.cr` requires the Dart Sass binary. This is automatically handled by the Makefile:
+`sassd.cr` requires the Dart Sass binary. This is automatically handled by Just:
 
 ```bash
-make sass  # Downloads the correct binary for your platform
+just sass  # Downloads the correct binary for your platform
 ```
 
 Or it will fallback to npm if precompiled binaries aren't available.
@@ -170,27 +170,27 @@ css2 = compiler.compile_file("admin.scss")
 If you see an error about the Sass binary not being found:
 
 ```bash
-make sass
+just sass
 ```
 
 This will download and install the correct Dart Sass binary for your platform.
 
 ### Version Mismatch
 
-The library checks for a minimum Dart Sass version (1.97.1). If you have an older version:
+The library checks for a minimum Dart Sass version (1.98.0). If you have an older version:
 
 ```bash
 make clean-sass
-make sass
+just sass
 ```
 
 ### Platform-Specific Issues
 
-The Makefile automatically handles platform detection. If you encounter issues:
+The Justfile automatically handles platform detection. If you encounter issues:
 
 ```bash
 # Check detected platform
-make sass
+just sass
 
 # If that fails, install via npm fallback
 npm install -g sass
@@ -209,7 +209,7 @@ For single-file compilations, the module-level methods (`Sass.compile`, `Sass.co
 ## Need Help?
 
 If you encounter any issues migrating:
-1. Check that `make sass` ran successfully
+1. Check that `just sass` ran successfully
 2. Verify you changed `require "sass"` to `require "sassd"`
 3. Check that your code doesn't use any deprecated LibSass features
 4. Open an issue on GitHub: https://github.com/kritoke/sassd.cr/issues

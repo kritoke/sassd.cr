@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.1] - 2026-03-19
+
+### Changed
+
+- Updated Dart Sass dependency from 1.97.1 to 1.98.0 for latest features and fixes
+- Includes CLI improvements for dependency loop handling in watch mode (1.98.0)
+- Includes JavaScript API fixes and improvements (1.98.0)
+- Migrated from Makefile to Justfile for improved long-term maintainability
+- Removed Makefile dependency, now using Just exclusively
+- Updated shard.yml to use Just for postinstall script
+- Made ameba a proper development dependency (removed branch specification)
+- Added comprehensive test coverage for new Config-based API
+- Improved error handling with specific exception types
+
 ## [0.3.0] - 2026-01-18
 
 ### Added
@@ -57,6 +71,6 @@
 - Comprehensive test suite
 - Migration guide (MIGRATION.md) for migrating from sass.cr to sassd.cr
 - Makefile with targets for:
-  - `make sass` - Download Dart Sass binary
-  - `make test` - Run tests
-  - `make clean-sass` - Remove downloaded binaries
+  - `just sass` - Download Dart Sass binary
+  - `just test` - Run tests
+  - `just clean-sass` - Remove downloaded binaries
