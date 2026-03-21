@@ -13,7 +13,7 @@
 #
 # A new Config-based API is available for cleaner, more maintainable code:
 #
-# ```crystal
+# ```
 # config = Sass::Config.new(style: "compressed", source_map: true)
 # result = Sass.compile(source, config)
 # ```
@@ -34,7 +34,7 @@ require "semantic_version"
 module Sass
   # Default configuration instance
   @@default_config : Config? = nil
-  
+
   # The path to the sass executable. Defaults to "sass".
   @@bin_path : String = "sass"
   @@version_verified = false
@@ -92,17 +92,17 @@ module Sass
       bin_path: default_config.bin_path
     )
   end
-  
+
   # Get the default configuration
   def self.default_config
     @@default_config ||= Config.default
   end
-  
+
   # Set the default configuration
   def self.default_config=(config : Config)
     @@default_config = config
   end
-  
+
   # A reusable compiler instance for API compatibility with sass.cr
   class Compiler
     include Sass
@@ -267,26 +267,21 @@ module Sass
         if parts.size == 3
           # Use file compilation for better source map support
           # The YAML front matter is already stripped, so just write temp file
-          temp_file_path = nil
+          temp_file = File.tempfile(".scss")
           begin
-            temp_file = File.tempfile(".scss")
-            temp_file_path = temp_file.path
+            temp_file.puts(parts[2])
             temp_file.close
-            File.write(temp_file_path, parts[2])
             return compile_file_internal(
-              temp_file_path,
+              temp_file.path,
               config: config
             )
           rescue ex : File::Error
             raise Sass::TemporaryFileError.new("Failed to create or write temporary file for YAML front matter processing: #{ex.message}")
           ensure
-            if temp_file_path && File.exists?(temp_file_path)
-              begin
-                File.delete(temp_file_path)
-              rescue ex : File::Error
-                # Log warning but don't fail - temporary file cleanup is best-effort
-                STDERR.puts "Warning: Failed to clean up temporary file #{temp_file_path}: #{ex.message}"
-              end
+            begin
+              File.delete(temp_file.path) if File.exists?(temp_file.path)
+            rescue
+              # Ignore cleanup errors
             end
           end
         end
@@ -302,7 +297,7 @@ module Sass
   end
 
   private def self.compile_file_internal(path : String,
-                                        config : Config) : String
+                                         config : Config) : String
     args = [path]
     args += common_args(config, config.source_map_embed)
 
@@ -345,8 +340,8 @@ module Sass
 
   # New config-based API
   def self.compile_directory(input_dir : String,
-                            output_dir : String,
-                            config : Config = default_config) : Nil
+                             output_dir : String,
+                             config : Config = default_config) : Nil
     args = ["#{input_dir}:#{output_dir}"]
     args += common_args(config, config.source_map_embed)
 
@@ -356,14 +351,7 @@ module Sass
 
   private def self.common_args(config : Config, source_map_embed : Bool, for_stdin = false)
     args = ["--style=#{config.style}"]
-    if source_map_embed
-      args << "--embed-source-map"
-    elsif config.source_map && !for_stdin
-      # Don't generate source maps for stdin without embedding (not supported)
-      args << "--source-map"
-    else
-      args << "--no-source-map"
-    end
+    args += source_map_args(config, source_map_embed, for_stdin)
 
     # Source map options
     args << "--source-map-urls=#{config.source_map_urls}" if config.source_map_urls != "relative"
@@ -383,6 +371,19 @@ module Sass
     # Syntax and load paths
     args << "--indented" if config.is_indented_syntax_src
     resolve_load_paths(config.load_paths, config.include_path).each { |path| args << "--load-path=#{path}" }
+    args
+  end
+
+  private def self.source_map_args(config : Config, source_map_embed : Bool, for_stdin : Bool) : Array(String)
+    args = [] of String
+    if source_map_embed
+      args << "--embed-source-map"
+    elsif config.source_map && !for_stdin
+      # Don't generate source maps for stdin without embedding (not supported)
+      args << "--source-map"
+    else
+      args << "--no-source-map"
+    end
     args
   end
 
@@ -423,13 +424,13 @@ module Sass
              Process.find_executable(bin_path)
            end
     raise Sass::BinaryNotFoundError.new("Sass binary not found at '#{bin_path}'.") unless path
-    
+
     # Update the config with the resolved path if using default
     if config.bin_path.nil?
       @@bin_path = path
       @@version_verified = true
     end
-    
+
     check_version!(path, config.min_version || min_version)
   end
 

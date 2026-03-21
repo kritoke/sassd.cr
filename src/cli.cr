@@ -25,7 +25,7 @@ class Sass::CLI
       show_help
       exit 0
     end
-    
+
     # Parse arguments
     input_file = nil
     output_file = nil
@@ -40,7 +40,7 @@ class Sass::CLI
     quiet_deps = false
     verbose = false
     load_paths = [] of String
-    
+
     i = 0
     while i < args.size
       arg = args[i]
@@ -93,12 +93,12 @@ class Sass::CLI
       end
       i += 1
     end
-    
+
     if input_file.nil?
       STDERR.puts "Error: Input file is required"
       exit 1
     end
-    
+
     # Create config from CLI arguments
     config = Sass::Config.new(
       style: style,
@@ -113,7 +113,7 @@ class Sass::CLI
       verbose: verbose,
       load_paths: load_paths
     )
-    
+
     begin
       result = Sass.compile_file(input_file, config)
       if output_file
@@ -127,7 +127,7 @@ class Sass::CLI
       exit 1
     end
   end
-  
+
   private def self.show_help
     puts <<-HELP
       Usage: sassd [options] <input_file> [-o <output_file>]
@@ -154,10 +154,10 @@ class Sass::CLI
         sassd --style compressed --source-map --embed-source-map styles.scss -o styles.css
       HELP
   end
-  
+
   private def self.show_version
     puts "sassd.cr version 0.3.0"
-    
+
     # Try to get sass version
     begin
       output, _ = IO::Memory.new, IO::Memory.new
