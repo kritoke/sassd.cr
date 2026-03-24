@@ -39,7 +39,7 @@ describe Sass::Config do
       min_version: "1.98.0",
       bin_path: "/custom/sass"
     )
-    
+
     config.style.should eq("compressed")
     config.source_map.should be_true
     config.source_map_embed.should be_true
@@ -78,16 +78,16 @@ describe Sass::Config do
       source_map: false,
       load_paths: ["./base"]
     )
-    
+
     override_config = Sass::Config.new(
       style: "compressed",
       source_map: true,
       load_paths: ["./override"],
       min_version: "1.98.0"
     )
-    
+
     merged = base_config.merge(override_config)
-    
+
     # Base config takes precedence
     merged.style.should eq("expanded")
     merged.source_map.should be_false
@@ -177,7 +177,7 @@ layout: default
 ---
 .test { color: yaml; }
 SCSS
-    
+
     File.write("spec/yaml_test.scss", content)
     begin
       css = Sass.compile_file("spec/yaml_test.scss")
@@ -197,9 +197,31 @@ SCSS
     end
   end
 
+  it "processes YAML front matter with source maps in-memory" do
+    content = <<-SCSS
+---
+layout: default
+---
+.test { color: yaml-source-map; }
+SCSS
+
+    File.write("spec/yaml_source_map.scss", content)
+    begin
+      # Test with source_map enabled - should work with embedded source maps
+      css = Sass.compile_file("spec/yaml_source_map.scss", source_map: true, source_map_embed: true)
+      css.should contain("color: yaml-source-map")
+
+      # Test with source_map enabled but not embedded - should still work (auto-embeds)
+      css2 = Sass.compile_file("spec/yaml_source_map.scss", source_map: true)
+      css2.should contain("color: yaml-source-map")
+    ensure
+      File.delete("spec/yaml_source_map.scss") if File.exists?("spec/yaml_source_map.scss")
+    end
+  end
+
   it "raises FileReadError for non-existent files" do
     expect_raises(Sass::FileReadError) do
-      Sass.compile_file("non_existent_file.scss")
+      Sass.compile_file("spec/non_existent_file.scss")
     end
   end
 end

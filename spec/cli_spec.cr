@@ -6,7 +6,7 @@ describe "Sass CLI" do
     # Create a test SCSS file for CLI testing
     File.write("spec/cli_test.scss", ".test { color: cli; }")
   end
-  
+
   after_each do
     # Clean up test files
     File.delete("spec/cli_test.scss") if File.exists?("spec/cli_test.scss")
@@ -54,7 +54,7 @@ describe "Sass CLI" do
     begin
       output_with_charset = `./sassd spec/charset_test.scss`
       output_without_charset = `./sassd --no-charset spec/charset_test.scss`
-      
+
       output_with_charset.should contain("@charset \"UTF-8\";")
       output_without_charset.should_not contain("@charset")
     ensure

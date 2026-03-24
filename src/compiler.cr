@@ -46,25 +46,8 @@ module Sass
   def self.bin_path=(path : String)
     @@bin_path = path
     @@version_verified = false
-    # Also update the default config
-    default_config = self.default_config
-    self.default_config = Config.new(
-      style: default_config.style,
-      source_map: default_config.source_map,
-      source_map_embed: default_config.source_map_embed,
-      source_map_urls: default_config.source_map_urls,
-      embed_sources: default_config.embed_sources,
-      charset: default_config.charset,
-      error_css: default_config.error_css,
-      quiet: default_config.quiet,
-      quiet_deps: default_config.quiet_deps,
-      verbose: default_config.verbose,
-      load_paths: default_config.load_paths,
-      include_path: default_config.include_path,
-      is_indented_syntax_src: default_config.is_indented_syntax_src,
-      min_version: default_config.min_version,
-      bin_path: path
-    )
+    # Update the default config with the new bin_path
+    self.default_config = update_config(default_config, bin_path: path)
   end
 
   # The minimum required version of Dart Sass.
@@ -73,24 +56,8 @@ module Sass
   end
 
   def self.min_version=(version : String)
-    default_config = self.default_config
-    self.default_config = Config.new(
-      style: default_config.style,
-      source_map: default_config.source_map,
-      source_map_embed: default_config.source_map_embed,
-      source_map_urls: default_config.source_map_urls,
-      embed_sources: default_config.embed_sources,
-      charset: default_config.charset,
-      error_css: default_config.error_css,
-      quiet: default_config.quiet,
-      quiet_deps: default_config.quiet_deps,
-      verbose: default_config.verbose,
-      load_paths: default_config.load_paths,
-      include_path: default_config.include_path,
-      is_indented_syntax_src: default_config.is_indented_syntax_src,
-      min_version: version,
-      bin_path: default_config.bin_path
-    )
+    # Update the default config with the new min_version
+    self.default_config = update_config(default_config, min_version: version)
   end
 
   # Get the default configuration
@@ -138,19 +105,19 @@ module Sass
     def compile(source : String,
                 is_indented_syntax_src : Bool = false,
                 source_path : String? = nil) : String
-      config = Config.new(
-        style: @style,
-        source_map: @source_map,
-        source_map_embed: @source_map_embed,
-        source_map_urls: @source_map_urls,
-        embed_sources: @embed_sources,
-        charset: @charset,
-        error_css: @error_css,
-        quiet: @quiet,
-        quiet_deps: @quiet_deps,
-        verbose: @verbose,
-        load_paths: @load_paths,
-        include_path: @include_path,
+      config = Sass.compiler_instance_to_config(
+        compiler_style: @style,
+        compiler_source_map: @source_map,
+        compiler_source_map_embed: @source_map_embed,
+        compiler_source_map_urls: @source_map_urls,
+        compiler_embed_sources: @embed_sources,
+        compiler_charset: @charset,
+        compiler_error_css: @error_css,
+        compiler_quiet: @quiet,
+        compiler_quiet_deps: @quiet_deps,
+        compiler_verbose: @verbose,
+        compiler_load_paths: @load_paths,
+        compiler_include_path: @include_path,
         is_indented_syntax_src: is_indented_syntax_src
       )
       Sass.compile(source, config)
@@ -158,19 +125,22 @@ module Sass
 
     def compile_file(path : String,
                      is_indented_syntax_src : Bool = false) : String
-      config = Config.new(
-        style: @style,
-        source_map: @source_map,
-        source_map_embed: @source_map_embed,
-        source_map_urls: @source_map_urls,
-        embed_sources: @embed_sources,
-        charset: @charset,
-        error_css: @error_css,
-        quiet: @quiet,
-        quiet_deps: @quiet_deps,
-        verbose: @verbose,
-        load_paths: @load_paths,
-        include_path: @include_path,
+      # Validate the input path for security
+      Sass.validate_path!(path)
+
+      config = Sass.compiler_instance_to_config(
+        compiler_style: @style,
+        compiler_source_map: @source_map,
+        compiler_source_map_embed: @source_map_embed,
+        compiler_source_map_urls: @source_map_urls,
+        compiler_embed_sources: @embed_sources,
+        compiler_charset: @charset,
+        compiler_error_css: @error_css,
+        compiler_quiet: @quiet,
+        compiler_quiet_deps: @quiet_deps,
+        compiler_verbose: @verbose,
+        compiler_load_paths: @load_paths,
+        compiler_include_path: @include_path,
         is_indented_syntax_src: is_indented_syntax_src
       )
       Sass.compile_file(path, config)
@@ -193,8 +163,9 @@ module Sass
                    source_path : String? = nil,
                    include_path : (Array(String) | String)? = nil,
                    is_indented_syntax_src : Bool = false) : String
-    config = Config.new(
+    config = legacy_params_to_config(
       style: style,
+      load_paths: load_paths,
       source_map: source_map,
       source_map_embed: source_map_embed,
       source_map_urls: source_map_urls,
@@ -204,7 +175,6 @@ module Sass
       quiet: quiet,
       quiet_deps: quiet_deps,
       verbose: verbose,
-      load_paths: load_paths || [] of String,
       include_path: include_path,
       is_indented_syntax_src: is_indented_syntax_src
     )
@@ -238,8 +208,12 @@ module Sass
                         verbose : Bool = false,
                         include_path : (Array(String) | String)? = nil,
                         is_indented_syntax_src : Bool = false) : String
-    config = Config.new(
+    # Validate the input path for security
+    validate_path!(path)
+
+    config = legacy_params_to_config(
       style: style,
+      load_paths: load_paths,
       source_map: source_map,
       source_map_embed: source_map_embed,
       source_map_urls: source_map_urls,
@@ -249,7 +223,6 @@ module Sass
       quiet: quiet,
       quiet_deps: quiet_deps,
       verbose: verbose,
-      load_paths: load_paths || [] of String,
       include_path: include_path,
       is_indented_syntax_src: is_indented_syntax_src
     )
@@ -259,31 +232,45 @@ module Sass
   # New config-based API
   def self.compile_file(path : String,
                         config : Config = default_config) : String
+    # Validate the input path for security
+    validate_path!(path)
+
     # Handle Jekyll-style YAML front matter by stripping it before compilation
     if File.exists?(path)
       content = File.read(path)
       if content.starts_with?("---")
         parts = content.split("---", 3)
         if parts.size == 3
-          # Use file compilation for better source map support
-          # The YAML front matter is already stripped, so just write temp file
-          temp_file = File.tempfile(".scss")
-          begin
-            temp_file.puts(parts[2])
-            temp_file.close
-            return compile_file_internal(
-              temp_file.path,
-              config: config
-            )
-          rescue ex : File::Error
-            raise Sass::TemporaryFileError.new("Failed to create or write temporary file for YAML front matter processing: #{ex.message}")
-          ensure
-            begin
-              File.delete(temp_file.path) if File.exists?(temp_file.path)
-            rescue
-              # Ignore cleanup errors
-            end
-          end
+          # Process YAML front matter in-memory instead of using temporary files
+          # Extract the Sass content after the YAML front matter
+          sass_content = parts[2]
+
+          # For stdin compilation with source maps, we need to embed source maps
+          # Create a modified config that ensures source maps are embedded if enabled
+          effective_config = if config.source_map && !config.source_map_embed
+                               # Source maps with stdin require embedding
+                               Config.new(
+                                 style: config.style,
+                                 source_map: config.source_map,
+                                 source_map_embed: true, # Force embed for stdin
+                                 source_map_urls: config.source_map_urls,
+                                 embed_sources: config.embed_sources,
+                                 charset: config.charset,
+                                 error_css: config.error_css,
+                                 quiet: config.quiet,
+                                 quiet_deps: config.quiet_deps,
+                                 verbose: config.verbose,
+                                 load_paths: config.load_paths,
+                                 include_path: config.include_path,
+                                 is_indented_syntax_src: config.is_indented_syntax_src,
+                                 min_version: config.min_version,
+                                 bin_path: config.bin_path
+                               )
+                             else
+                               config
+                             end
+
+          return compile(sass_content, effective_config)
         end
       end
     else
@@ -320,8 +307,13 @@ module Sass
                              verbose : Bool = false,
                              include_path : (Array(String) | String)? = nil,
                              is_indented_syntax_src : Bool = false) : Nil
-    config = Config.new(
+    # Validate input and output paths for security
+    validate_path!(input_dir)
+    validate_path!(output_dir)
+
+    config = legacy_params_to_config(
       style: style,
+      load_paths: load_paths,
       source_map: source_map,
       source_map_embed: source_map_embed,
       source_map_urls: source_map_urls,
@@ -331,7 +323,6 @@ module Sass
       quiet: quiet,
       quiet_deps: quiet_deps,
       verbose: verbose,
-      load_paths: load_paths || [] of String,
       include_path: include_path,
       is_indented_syntax_src: is_indented_syntax_src
     )
@@ -342,6 +333,10 @@ module Sass
   def self.compile_directory(input_dir : String,
                              output_dir : String,
                              config : Config = default_config) : Nil
+    # Validate input and output paths for security
+    validate_path!(input_dir)
+    validate_path!(output_dir)
+
     args = ["#{input_dir}:#{output_dir}"]
     args += common_args(config, config.source_map_embed)
 
@@ -432,6 +427,127 @@ module Sass
     end
 
     check_version!(path, config.min_version || min_version)
+  end
+
+  # Validate a file path for security concerns
+  def self.validate_path!(path : String)
+    # Check for null bytes which could be used for injection attacks
+    if path.includes?('\0')
+      raise Sass::InvalidSourceError.new("Invalid path contains null bytes: #{path}")
+    end
+
+    # Check for obvious directory traversal attempts
+    # Note: This is a basic check - File.expand_path provides additional protection
+    normalized_path = path.gsub(%r{/+}, "/") # Normalize multiple slashes
+    if normalized_path.includes?("../") || normalized_path.includes?("..\\")
+      raise Sass::InvalidSourceError.new("Path validation failed - potential directory traversal attempt: #{path}")
+    end
+
+    # Additional validation could be added here if needed
+  end
+
+  # Convert legacy API parameters to Config object
+  def self.legacy_params_to_config(
+    style : String = "expanded",
+    load_paths : Array(String)? = nil,
+    source_map : Bool = false,
+    source_map_embed : Bool = false,
+    source_map_urls : String = "relative",
+    embed_sources : Bool = false,
+    charset : Bool = true,
+    error_css : Bool = true,
+    quiet : Bool = false,
+    quiet_deps : Bool = false,
+    verbose : Bool = false,
+    include_path : (Array(String) | String)? = nil,
+    is_indented_syntax_src : Bool = false,
+  ) : Config
+    Config.new(
+      style: style,
+      source_map: source_map,
+      source_map_embed: source_map_embed,
+      source_map_urls: source_map_urls,
+      embed_sources: embed_sources,
+      charset: charset,
+      error_css: error_css,
+      quiet: quiet,
+      quiet_deps: quiet_deps,
+      verbose: verbose,
+      load_paths: load_paths || [] of String,
+      include_path: include_path,
+      is_indented_syntax_src: is_indented_syntax_src
+    )
+  end
+
+  # Update specific fields in a config while preserving others
+  def self.update_config(
+    config : Config,
+    style : String? = nil,
+    load_paths : Array(String)? = nil,
+    source_map : Bool? = nil,
+    source_map_embed : Bool? = nil,
+    source_map_urls : String? = nil,
+    embed_sources : Bool? = nil,
+    charset : Bool? = nil,
+    error_css : Bool? = nil,
+    quiet : Bool? = nil,
+    quiet_deps : Bool? = nil,
+    verbose : Bool? = nil,
+    include_path : (Array(String) | String)? = nil,
+    is_indented_syntax_src : Bool? = nil,
+    min_version : String? = nil,
+    bin_path : String? = nil,
+  ) : Config
+    Config.new(
+      style: style || config.style,
+      source_map: source_map || config.source_map,
+      source_map_embed: source_map_embed || config.source_map_embed,
+      source_map_urls: source_map_urls || config.source_map_urls,
+      embed_sources: embed_sources || config.embed_sources,
+      charset: charset || config.charset,
+      error_css: error_css || config.error_css,
+      quiet: quiet || config.quiet,
+      quiet_deps: quiet_deps || config.quiet_deps,
+      verbose: verbose || config.verbose,
+      load_paths: load_paths || config.load_paths,
+      include_path: include_path.nil? ? config.include_path : include_path,
+      is_indented_syntax_src: is_indented_syntax_src || config.is_indented_syntax_src,
+      min_version: min_version.nil? ? config.min_version : min_version,
+      bin_path: bin_path.nil? ? config.bin_path : bin_path
+    )
+  end
+
+  # Convert Compiler instance variables to Config object
+  def self.compiler_instance_to_config(
+    compiler_style : String,
+    compiler_source_map : Bool,
+    compiler_source_map_embed : Bool,
+    compiler_source_map_urls : String,
+    compiler_embed_sources : Bool,
+    compiler_charset : Bool,
+    compiler_error_css : Bool,
+    compiler_quiet : Bool,
+    compiler_quiet_deps : Bool,
+    compiler_verbose : Bool,
+    compiler_load_paths : Array(String),
+    compiler_include_path : (Array(String) | String)?,
+    is_indented_syntax_src : Bool = false,
+  ) : Config
+    Config.new(
+      style: compiler_style,
+      source_map: compiler_source_map,
+      source_map_embed: compiler_source_map_embed,
+      source_map_urls: compiler_source_map_urls,
+      embed_sources: compiler_embed_sources,
+      charset: compiler_charset,
+      error_css: compiler_error_css,
+      quiet: compiler_quiet,
+      quiet_deps: compiler_quiet_deps,
+      verbose: compiler_verbose,
+      load_paths: compiler_load_paths,
+      include_path: compiler_include_path,
+      is_indented_syntax_src: is_indented_syntax_src
+    )
   end
 
   private def self.check_version!(path, required_version_str)

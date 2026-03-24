@@ -18,6 +18,26 @@
 # ```
 require "./sassd"
 
+# CLI options structure
+struct Sass::CLI::Options
+  property input_file : String?
+  property output_file : String?
+  property style : String = "expanded"
+  property source_map : Bool = false
+  property source_map_embed : Bool = false
+  property source_map_urls : String = "relative"
+  property embed_sources : Bool = false
+  property charset : Bool = true
+  property error_css : Bool = true
+  property quiet : Bool = false
+  property quiet_deps : Bool = false
+  property verbose : Bool = false
+  property load_paths = [] of String
+
+  def initialize
+  end
+end
+
 # Simple CLI argument parser
 class Sass::CLI
   def self.run(args : Array(String))
@@ -26,22 +46,14 @@ class Sass::CLI
       exit 0
     end
 
-    # Parse arguments
-    input_file = nil
-    output_file = nil
-    style = "expanded"
-    source_map = false
-    source_map_embed = false
-    source_map_urls = "relative"
-    embed_sources = false
-    charset = true
-    error_css = true
-    quiet = false
-    quiet_deps = false
-    verbose = false
-    load_paths = [] of String
+    options = parse_args(args)
+    validate_and_execute(options)
+  end
 
+  private def self.parse_args(args : Array(String)) : Options
+    options = Options.new
     i = 0
+
     while i < args.size
       arg = args[i]
       case arg
@@ -51,80 +63,118 @@ class Sass::CLI
       when "--version", "-v"
         show_version
         exit 0
-      when "--style"
-        i += 1
-        style = args[i] if i < args.size
-      when "--source-map"
-        source_map = true
-      when "--embed-source-map"
-        source_map_embed = true
-      when "--source-map-urls"
-        i += 1
-        source_map_urls = args[i] if i < args.size
-      when "--embed-sources"
-        embed_sources = true
-      when "--no-charset"
-        charset = false
-      when "--no-error-css"
-        error_css = false
-      when "--quiet"
-        quiet = true
-      when "--quiet-deps"
-        quiet_deps = true
-      when "--verbose"
-        verbose = true
-      when "--load-path"
-        i += 1
-        load_paths << args[i] if i < args.size
-      when "--output", "-o"
-        i += 1
-        output_file = args[i] if i < args.size
       else
-        # Assume it's the input file if it doesn't start with --
-        if arg.starts_with?("--")
-          STDERR.puts "Unknown option: #{arg}"
-          exit 1
-        elsif input_file.nil?
-          input_file = arg
+        result = parse_option(arg, args, i)
+        if result
+          flag, value = result
+          apply_option(options, flag, value)
+          i += 1 if flag.has_value?
         else
-          STDERR.puts "Too many input files specified"
-          exit 1
+          handle_positional_arg(options, arg)
         end
       end
       i += 1
     end
 
-    if input_file.nil?
+    options
+  end
+
+  private def self.parse_option(arg : String, args : Array(String), index : Int32)
+    option = OPTIONMAP.find { |k, _| k == arg }
+    return unless option
+
+    flag = option[1]
+    if flag.has_value?
+      next_index = index + 1
+      if next_index < args.size
+        {flag, args[next_index]}
+      end
+    else
+      {flag, nil}
+    end
+  end
+
+  private def self.apply_option(options : Options, flag : Flag, value : String?)
+    case flag.name
+    when "style"            then options.style = value.as(String)
+    when "source-map"       then options.source_map = true
+    when "embed-source-map" then options.source_map_embed = true
+    when "source-map-urls"  then options.source_map_urls = value.as(String)
+    when "embed-sources"    then options.embed_sources = true
+    when "no-charset"       then options.charset = false
+    when "no-error-css"     then options.error_css = false
+    when "quiet"            then options.quiet = true
+    when "quiet-deps"       then options.quiet_deps = true
+    when "verbose"          then options.verbose = true
+    when "load-path"        then options.load_paths << value.as(String)
+    when "output"           then options.output_file = value.as(String)
+    end
+  end
+
+  private def self.handle_positional_arg(options : Options, arg : String)
+    if arg.starts_with?("--")
+      STDERR.puts "Unknown option: #{arg}"
+      exit 1
+    elsif options.input_file.nil?
+      options.input_file = arg
+    else
+      STDERR.puts "Too many input files specified"
+      exit 1
+    end
+  end
+
+  private def self.validate_and_execute(options : Options)
+    if options.input_file.nil?
       STDERR.puts "Error: Input file is required"
       exit 1
     end
 
-    # Create config from CLI arguments
-    config = Sass::Config.new(
-      style: style,
-      source_map: source_map,
-      source_map_embed: source_map_embed,
-      source_map_urls: source_map_urls,
-      embed_sources: embed_sources,
-      charset: charset,
-      error_css: error_css,
-      quiet: quiet,
-      quiet_deps: quiet_deps,
-      verbose: verbose,
-      load_paths: load_paths
+    validate_paths(options)
+
+    config = Sass.legacy_params_to_config(
+      style: options.style,
+      load_paths: options.load_paths,
+      source_map: options.source_map,
+      source_map_embed: options.source_map_embed,
+      source_map_urls: options.source_map_urls,
+      embed_sources: options.embed_sources,
+      charset: options.charset,
+      error_css: options.error_css,
+      quiet: options.quiet,
+      quiet_deps: options.quiet_deps,
+      verbose: options.verbose,
+      include_path: nil,
+      is_indented_syntax_src: false
     )
 
     begin
-      result = Sass.compile_file(input_file, config)
-      if output_file
-        File.write(output_file, result)
+      result = Sass.compile_file(options.input_file.as(String), config)
+      if options.output_file
+        File.write(options.output_file.as(String), result)
       else
-        # When outputting to stdout, ensure source maps are embedded if enabled
         puts result
       end
     rescue ex : Sass::CompilationError
       STDERR.puts ex.message
       exit 1
+    end
+  end
+
+  private def self.validate_paths(options : Options)
+    begin
+      Sass.validate_path!(options.input_file.as(String))
+    rescue ex : Sass::InvalidSourceError
+      STDERR.puts "Path validation error: #{ex.message}"
+      exit 1
+    end
+
+    if options.output_file
+      begin
+        Sass.validate_path!(options.output_file.as(String))
+      rescue ex : Sass::InvalidSourceError
+        STDERR.puts "Output path validation error: #{ex.message}"
+        exit 1
+      end
     end
   end
 
@@ -152,13 +202,12 @@ class Sass::CLI
         sassd styles.scss
         sassd styles.scss -o styles.css
         sassd --style compressed --source-map --embed-source-map styles.scss -o styles.css
-      HELP
+    HELP
   end
 
   private def self.show_version
     puts "sassd.cr version 0.3.0"
 
-    # Try to get sass version
     begin
       output, _ = IO::Memory.new, IO::Memory.new
       status = Process.run("sass", args: ["--version"], output: output, error: Process::Redirect::Close)
@@ -171,10 +220,50 @@ class Sass::CLI
   end
 end
 
+struct Sass::CLI::Flag
+  property name : String
+  property has_value : Bool
+
+  def initialize(@name : String, @has_value : Bool)
+  end
+end
+
+module Sass::CLI::OPTIONMAP
+  def self.[]=(key, value)
+    @@map[key] = value
+  end
+
+  def self.[](key)
+    @@map[key]?
+  end
+
+  def self.find(&block)
+    @@map.find(&block)
+  end
+
+  def self.init
+    @@map = {} of String => Flag
+    @@map["--style"] = Flag.new("style", true)
+    @@map["--source-map"] = Flag.new("source-map", false)
+    @@map["--embed-source-map"] = Flag.new("embed-source-map", false)
+    @@map["--source-map-urls"] = Flag.new("source-map-urls", true)
+    @@map["--embed-sources"] = Flag.new("embed-sources", false)
+    @@map["--no-charset"] = Flag.new("no-charset", false)
+    @@map["--no-error-css"] = Flag.new("no-error-css", false)
+    @@map["--quiet"] = Flag.new("quiet", false)
+    @@map["--quiet-deps"] = Flag.new("quiet-deps", false)
+    @@map["--verbose"] = Flag.new("verbose", false)
+    @@map["--load-path"] = Flag.new("load-path", true)
+    @@map["--output"] = Flag.new("output", true)
+    @@map["-o"] = Flag.new("output", true)
+  end
+end
+
 # Define version constant
 module Sassd
   VERSION = "0.3.0"
 end
 
-# Run the CLI
+# Initialize option map and run the CLI
+Sass::CLI::OPTIONMAP.init
 Sass::CLI.run(ARGV)
