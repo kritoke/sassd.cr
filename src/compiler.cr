@@ -232,12 +232,12 @@ module Sass
   # New config-based API
   def self.compile_file(path : String,
                         config : Config = default_config) : String
-    # Validate the input path for security
-    validate_path!(path)
+    # Validate and resolve the input path to ensure it's safe
+    resolved_path = validate_and_resolve_path!(path)
 
     # Handle Jekyll-style YAML front matter by stripping it before compilation
-    if File.exists?(path)
-      content = File.read(path)
+    if File.exists?(resolved_path)
+      content = File.read(resolved_path)
       if content.starts_with?("---")
         parts = content.split("---", 3)
         if parts.size == 3
@@ -406,18 +406,34 @@ module Sass
 
   private def self.resolve_load_paths(load_paths, include_path)
     paths = [] of String
-    paths.concat(load_paths) if load_paths
-    paths.concat(include_path) if include_path
+    if load_paths
+      load_paths.each do |p|
+        validate_path!(p)
+        paths << p
+      end
+    end
+    if include_path
+      include_path.each do |p|
+        validate_path!(p)
+        paths << p
+      end
+    end
     paths
   end
 
   private def self.verify_bin_path!(config : Config)
     bin_path = config.bin_path || @@bin_path
-    path = if bin_path == "sass"
-             Process.find_executable(File.expand_path("./bin/sass")) || Process.find_executable("sass")
-           else
-             Process.find_executable(bin_path)
-           end
+
+    # Validate the bin path to ensure it's safe before use
+    if bin_path != "sass"
+      # For non-default paths, validate and resolve to absolute path
+      validated_path = validate_bin_path!(bin_path)
+      path = Process.find_executable(validated_path) || validated_path
+    else
+      # For default "sass", try to find it in bin directory first
+      path = Process.find_executable(File.expand_path("./bin/sass")) || Process.find_executable("sass")
+    end
+
     raise Sass::BinaryNotFoundError.new("Sass binary not found at '#{bin_path}'.") unless path
 
     # Update the config with the resolved path if using default
@@ -432,7 +448,7 @@ module Sass
   # Validate a file path for security concerns
   def self.validate_path!(path : String)
     # Check for null bytes which could be used for injection attacks
-    if path.includes?('\0')
+    if path.includes?("\0")
       raise Sass::InvalidSourceError.new("Invalid path contains null bytes: #{path}")
     end
 
@@ -442,8 +458,53 @@ module Sass
     if normalized_path.includes?("../") || normalized_path.includes?("..\\")
       raise Sass::InvalidSourceError.new("Path validation failed - potential directory traversal attempt: #{path}")
     end
+  end
 
-    # Additional validation could be added here if needed
+  # Validate and resolve a file path to prevent path traversal
+  # Returns the canonical, expanded path after validation
+  def self.validate_and_resolve_path!(path : String, base_dir : String? = nil) : String
+    # First run basic validation
+    validate_path!(path)
+
+    # Use File.expand_path to resolve relative paths and symlinks
+    if base_dir
+      expanded = File.expand_path(path, base_dir)
+    else
+      expanded = File.expand_path(path)
+    end
+
+    # Verify the expanded path is safe (doesn't escape base_dir if provided)
+    if base_dir
+      base_expanded = File.expand_path(base_dir)
+      # Normalize and ensure the path is within the base directory
+      if !expanded.starts_with?(base_expanded + "/") && expanded != base_expanded
+        raise Sass::InvalidSourceError.new("Path escapes base directory: #{path}")
+      end
+    end
+
+    expanded
+  end
+
+  # Validate a binary path for command execution
+  # Ensures the path is a valid, existing executable
+  def self.validate_bin_path!(bin_path : String) : String
+    validate_path!(bin_path)
+
+    # Resolve to absolute path
+    resolved = File.expand_path(bin_path)
+
+    # Verify it's an actual file and executable
+    unless File.file?(resolved)
+      raise Sass::BinaryNotFoundError.new("Binary path is not a file: #{bin_path}")
+    end
+
+    # Check executable bit using File.info permissions (avoid deprecated File.executable?)
+    file_info = File.info(resolved)
+    unless (file_info.permissions.value & 0o111) != 0
+      raise Sass::BinaryNotFoundError.new("Binary path is not executable: #{bin_path}")
+    end
+
+    resolved
   end
 
   # Convert legacy API parameters to Config object
@@ -551,8 +612,17 @@ module Sass
   end
 
   private def self.check_version!(path, required_version_str)
+    # Validate the path is safe before executing
+    validate_path!(path)
+    
+    # Ensure the path is an absolute path and exists as a file
+    absolute_path = File.expand_path(path)
+    unless File.file?(absolute_path)
+      raise Sass::BinaryNotFoundError.new("Version check failed - path is not a file: #{path}")
+    end
+    
     stdout, stderr = IO::Memory.new, IO::Memory.new
-    status = Process.run(path, args: ["--version"], output: stdout, error: stderr)
+    status = Process.run(absolute_path, args: ["--version"], output: stdout, error: stderr)
     if status.success?
       version_str = stdout.to_s.strip.split(' ').first
       begin
