@@ -1,0 +1,8 @@
+# Catseye project configuration for sassd.cr
+
+[taint.suppress]
+# CommandInjection: Process.run uses array form (no shell), path validated by validate_bin_path!/validate_path!
+CommandInjection = ["**/compiler.cr"]
+
+# PathTraversal: paths validated by validate_and_resolve_path!/validate_path! + File.expand_path
+PathTraversal = ["**/compiler.cr"]
