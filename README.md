@@ -1,7 +1,6 @@
 # sassd.cr
 
 [![Crystal CI](https://github.com/kritoke/sassd.cr/actions/workflows/crystal.yml/badge.svg)](https://github.com/kritoke/sassd.cr/actions/workflows/crystal.yml)
-[![Crystal shard](https://img.shields.io/badge/crystal-v0.1.0_--_latest-blue.svg)](https://github.com/kritoke/sassd.cr)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/kritoke/sassd.cr/blob/main/LICENSE)
 
 A modern, high-performance Crystal wrapper for the Dart Sass CLI.
@@ -21,40 +20,38 @@ A modern, high-performance Crystal wrapper for the Dart Sass CLI.
 * **Charset Control**: Control whether to emit `@charset` or BOM for CSS with non-ASCII characters.
 * **Error Handling**: Option to emit error stylesheets when compilation fails instead of raising exceptions.
 * **Warning Control**: Fine-grained control over warning behavior with `quiet`, `quiet_deps`, and `verbose` options.
+* **Deprecation Control**: Control how deprecation warnings are handled with `fatal_deprecation`, `silence_deprecation`, and `future_deprecation`.
+* **Timeout Handling**: Prevent hung compilations with configurable timeouts.
 * **CLI Tool**: Includes a standalone `sassd` executable for quick compilations.
+
+## Requirements
+
+- Crystal 1.18.2 or later
+- Dart Sass 1.100.0 or later (automatically installed)
 
 ## Installation
 
-1. Add the dependency to your `shard.yml`:
+### 1. Add the dependency
 
-   ```yaml
-   dependencies:
-     sassd:
-       github: kritoke/sassd.cr
-   ```
-
-2. Run `shards install`.
-
-## Setup
-
-This shard requires the Dart Sass executable. By default, `shards install` will automatically download the standalone binary to your project's `bin/` folder.
-
-If you need to trigger the installation manually, use **Just**:
-
-### Using Just
-
-[Just](https://github.com/casey/just) is a modern command runner that provides better error handling and cross-platform compatibility.
-
-```bash
-# Install Just first (if not already installed)
-# Then run:
-just sass
+```yaml
+# shard.yml
+dependencies:
+  sassd:
+    github: kritoke/sassd.cr
 ```
 
-To build the included CLI tool:
+### 2. Run shards install
 
 ```bash
-just build
+shards install
+```
+
+This will automatically download the Dart Sass binary for your platform.
+
+### 3. Build the CLI (optional)
+
+```bash
+shards build
 ```
 
 ## Usage
@@ -71,113 +68,225 @@ scss = <<-SCSS
 SCSS
 
 css = Sass.compile(scss)
+puts css
 ```
 
 ### Compiling Files
 
 ```crystal
-css = Sass.compile_file("src/assets/main.scss", style: "compressed")
+# Simple file compilation
+css = Sass.compile_file("styles.scss")
+
+# With options
+css = Sass.compile_file("styles.scss", style: "compressed", source_map: true)
 ```
 
-### Batch Directory Compilation
+### Using Config Objects
 
-Ideal for build pipelines and static site generators:
+For cleaner code with multiple options, use the Config API:
 
 ```crystal
-Sass.compile_directory(
-  input_dir: "src/assets/sass",
-  output_dir: "public/css",
+config = Sass::Config.new(
   style: "compressed",
-  source_map: true
+  source_map: true,
+  source_map_embed: true,
+  load_paths: ["./lib", "./vendor"]
 )
+
+css = Sass.compile(source, config)
 ```
 
 ### Using a Reusable Compiler
-
-For API compatibility with `sass.cr`, you can create a reusable `Sass::Compiler` instance:
 
 ```crystal
 compiler = Sass::Compiler.new(
   style: "compressed",
   source_map: true,
-  source_map_embed: true,
-  source_map_urls: "absolute",
-  embed_sources: true,
-  charset: false,
-  error_css: false,
-  quiet: true,
-  load_paths: ["vendor/stylesheets"],
-  include_path: "includes"
+  load_paths: ["vendor/stylesheets"]
 )
 
-# Compile multiple files with the same options
-css_application = compiler.compile_file("application.scss")
-css_layout = compiler.compile("@import 'layout';")
-
-# Modify options dynamically
-compiler.style = "expanded"
-compiler.source_map_urls = "relative"
-compiler.embed_sources = false
-compiler.load_paths << "additional/styles"
+# Compile multiple times with the same options
+css1 = compiler.compile_file("app.scss")
+css2 = compiler.compile_file("lib.scss")
 ```
 
-### Configuration
+### Stdin Compilation
 
-You can manually point the library to a specific Sass binary:
+```bash
+# Pipe SCSS to stdin
+echo '.test { color: red; }' | sassd --stdin
+
+# With options
+cat styles.scss | sassd --stdin --style=compressed
+```
+
+### Batch Directory Compilation
 
 ```crystal
-Sass.bin_path = "/usr/local/bin/sass"
+Sass.compile_directory(
+  "src/sass",
+  "public/css",
+  style: "compressed",
+  source_map: true
+)
 ```
 
-### API Compatibility with sass.cr
+## API Reference
+
+### Module Methods
+
+| Method | Description |
+|--------|-------------|
+| `Sass.compile(source, config?)` | Compile SCSS/Sass string to CSS |
+| `Sass.compile_file(path, config?)` | Compile a file to CSS |
+| `Sass.compile_directory(input, output, config?)` | Compile directory |
+| `Sass::Compiler.new(**options)` | Create reusable compiler instance |
+
+### Config Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `style` | String | `"expanded"` | Output style: `"expanded"` or `"compressed"` |
+| `source_map` | Bool | `false` | Generate source map |
+| `source_map_embed` | Bool | `false` | Embed source map in CSS |
+| `source_map_urls` | String | `"relative"` | Source map URL type: `"relative"` or `"absolute"` |
+| `embed_sources` | Bool | `false` | Embed original sources in source map |
+| `charset` | Bool | `true` | Include @charset declaration |
+| `error_css` | Bool | `true` | Generate error CSS on failure |
+| `quiet` | Bool | `false` | Suppress all warnings |
+| `quiet_deps` | Bool | `false` | Suppress dependency warnings |
+| `verbose` | Bool | `false` | Show all deprecation warnings |
+| `load_paths` | Array(String) | `[]` | Paths for @import resolution |
+| `include_path` | String/Array(String) | `nil` | Legacy load paths |
+| `is_indented_syntax_src` | Bool | `false` | Treat as Sass (indented) syntax |
+| `fatal_deprecation` | String? | `nil` | Treat deprecations up to version as errors |
+| `silence_deprecation` | Array(String)? | `nil` | Deprecation names to suppress |
+| `future_deprecation` | String? | `nil` | Opt-in to future deprecations |
+| `timeout` | Int64? | `nil` | Compilation timeout in seconds |
+| `min_version` | String? | `"1.100.0"` | Minimum required Dart Sass version |
+| `bin_path` | String? | `nil` | Custom path to sass binary |
+
+### Error Types
+
+```crystal
+Sass::CompilationError      # General compilation error
+Sass::BinaryNotFoundError  # Sass binary not found
+Sass::VersionMismatchError  # Dart Sass version too old
+Sass::InvalidSourceError   # Invalid SCSS/Sass source
+Sass::FileReadError        # File not found or unreadable
+Sass::TimeoutError         # Compilation timed out
+```
+
+### CLI Options
+
+```bash
+sassd [options] <input_file> [-o <output_file>]
+sassd --stdin [-o <output_file>]
+
+Options:
+  --help, -h              Show help
+  --version, -v           Show version
+  --stdin                  Read from stdin
+  --style <style>          expanded|compressed [default: expanded]
+  --source-map            Generate source map
+  --embed-source-map      Embed source map in CSS
+  --source-map-urls       relative|absolute [default: relative]
+  --embed-sources         Embed source files in source map
+  --no-charset            Don't include @charset
+  --no-error-css          Don't generate error CSS
+  --quiet                 Suppress warnings
+  --quiet-deps            Suppress dependency warnings
+  --verbose               Show all deprecation warnings
+  --load-path <path>      Add import path
+  --output, -o <file>     Output file
+  --force, -f             Overwrite output file
+  --fatal-deprecation <v> Treat deprecations as errors
+  --silence-deprecation <n> Suppress deprecation warning
+  --future-deprecation <v> Opt-in to future deprecations
+  --timeout <seconds>     Compilation timeout
+```
+
+## Examples
+
+### With Source Maps
+
+```crystal
+config = Sass::Config.new(
+  source_map: true,
+  source_map_embed: true,
+  embed_sources: true
+)
+css = Sass.compile_file("input.scss", config)
+```
+
+### With Deprecation Control
+
+```crystal
+# Treat all deprecations up to 1.100.0 as errors
+config = Sass::Config.new(fatal_deprecation: "1.100.0")
+css = Sass.compile(source, config)
+
+# Silence specific deprecations
+config = Sass::Config.new(silence_deprecation: ["import"])
+css = Sass.compile(source, config)
+```
+
+### With Timeout
+
+```crystal
+# Fail after 30 seconds
+config = Sass::Config.new(timeout: 30)
+begin
+  css = Sass.compile(source, config)
+rescue Sass::TimeoutError
+  puts "Compilation timed out!"
+end
+```
+
+## Development
+
+```bash
+# Install dependencies
+shards install
+
+# Run tests
+crystal spec
+
+# Build CLI
+shards build
+
+# Install Sass binary
+./scripts/install-sass.sh
+```
+
+## API Compatibility
 
 This library is designed as a drop-in replacement for `sass.cr`. To migrate:
 
-1. Change `require "sass"` to `require "sassd"` in your code
-2. No other code changes needed - all methods and parameters are compatible
-3. Optionally use the `Sass::Compiler` class for reusable compiler instances
+```crystal
+# Before (sass.cr)
+require "sass"
+css = Sass.compile(".test { color: red; }", style: "compressed")
 
-For detailed migration instructions, see [MIGRATION.md](MIGRATION.md).
-
-## CLI Tool
-
-After running `shards build`, you can use the `sassd` utility:
-
-```bash
-./bin/sassd src/style.scss > public/style.css
+# After (sassd.cr)
+require "sassd"
+css = Sass.compile(".test { color: red; }", style: "compressed")
 ```
 
-This will attempt to download the standalone Dart Sass binary for your platform. If it cannot find a matching binary, it will fallback to an `npm` global installation.
+No other code changes needed!
 
-## Development Commands
+## License
 
-The project uses **Justfile** for development tasks:
-
-### Using Just
-
-```bash
-just sass          # Install Sass binary
-just clean-sass    # Remove local Sass binaries
-just test          # Run tests  
-just build         # Build the project
-```
-
-## Testing & Platform Notes
-
-**Note**: This library has been primarily tested on macOS (arm64). While it includes support for Linux (arm64/amd64) and FreeBSD (arm64/amd64) through the build system's platform detection and precompiled Dart Sass binary downloads, extensive testing on those platforms has not yet been performed. If you encounter any issues on these platforms, please open an issue.
-
-## Acknowledgments
-
-This library is heavily inspired by and designed to be API-compatible with [sass.cr](https://github.com/straight-shoota/sass.cr) by [Johannes Müller](https://github.com/straight-shoota). The original sass.cr library provided an excellent API design for Sass compilation in Crystal, and this implementation aims to preserve that experience while leveraging the modern Dart Sass implementation.
+MIT License - see [LICENSE](LICENSE)
 
 ## Contributing
 
-1. Fork it (<https://github.com/kritoke/sassd.cr/fork>)
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create a new Pull Request
+1. Fork it
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-## Contributors
+## Acknowledgments
 
-* [kritoke](https://github.com/kritoke) - creator and maintainer
+Inspired by and API-compatible with [sass.cr](https://github.com/straight-shoota/sass.cr) by Johannes Müller.

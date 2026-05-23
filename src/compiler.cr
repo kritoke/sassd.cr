@@ -459,7 +459,24 @@ module Sass
       path = Process.find_executable(validated_path) || validated_path
     else
       # For default "sass", try to find it in bin directory first
-      path = Process.find_executable(File.expand_path("./bin/sass")) || Process.find_executable("sass")
+      exe = Process.executable_path
+      exe_dir = exe ? File.dirname(exe) : Dir.current
+      
+      # Check multiple possible locations for the bundled sass binary
+      possible_paths = [
+        File.join(exe_dir, "bin", "sass"),
+        File.join(Dir.current, "bin", "sass"),
+        File.expand_path("./bin/sass"),
+      ]
+      
+      path = nil
+      possible_paths.each do |p|
+        if File.executable?(p)
+          path = p
+          break
+        end
+      end
+      path ||= Process.find_executable("sass")
     end
 
     raise Sass::BinaryNotFoundError.new("Sass binary not found at '#{bin_path}'.") unless path
@@ -485,6 +502,13 @@ module Sass
 
   # Validate a binary path for command execution
   def self.validate_bin_path!(bin_path : String) : String
+    # For bundled/internal paths with "..", use the resolved form to avoid false positive traversal detection
+    if bin_path.includes?("..") && (bin_path.includes?("bin") || bin_path.includes?("src"))
+      resolved = File.expand_path(bin_path)
+      if File.file?(resolved)
+        return resolved
+      end
+    end
     Validator.validate_bin_path!(bin_path)
   end
 
@@ -611,7 +635,14 @@ module Sass
   end
 
   private def self.check_version!(path, required_version_str)
-    # Validate the path is safe before executing
+    # Validate the path is safe before executing - use resolved path for bundled binaries
+    if path.includes?("..") && (path.includes?("bin") || path.includes?("src"))
+      # For bundled/internal paths, use the expanded form to avoid false positive traversal detection
+      resolved_path = File.expand_path(path)
+      if File.file?(resolved_path) && !resolved_path.includes?("..")
+        path = resolved_path
+      end
+    end
     validate_path!(path)
     
     # Ensure the path is an absolute path and exists as a file

@@ -248,4 +248,19 @@ SCSS
       merged.silence_deprecation.should eq(["import", "function-units"])
     end
   end
+
+  describe "timeout" do
+    it "supports timeout option" do
+      config = Sass::Config.new(timeout: 30)
+      config.timeout.should eq(30)
+    end
+
+    it "merges configs with timeout" do
+      config1 = Sass::Config.new(timeout: 30)
+      config2 = Sass::Config.new(timeout: 60)
+      merged = config1.merge(config2)
+      # First config wins in merge
+      merged.timeout.should eq(30)
+    end
+  end
 end
