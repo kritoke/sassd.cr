@@ -11,4 +11,10 @@ module Sass
   class FileReadError < CompilationError; end
 
   class TemporaryFileError < CompilationError; end
+
+  class TimeoutError < CompilationError
+    def initialize(message = "Compilation timed out")
+      super(message)
+    end
+  end
 end

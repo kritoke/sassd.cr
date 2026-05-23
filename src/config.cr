@@ -71,6 +71,9 @@ module Sass
     # Opt-in to deprecations from a future version
     getter future_deprecation : String?
 
+    # Timeout in seconds for compilation (nil = no timeout)
+    getter timeout : Int64?
+
     # Creates a new configuration with the specified options.
     #
     # All parameters have sensible defaults that match the original
@@ -94,6 +97,7 @@ module Sass
       @fatal_deprecation : String? = nil,
       @silence_deprecation : Array(String)? = nil,
       @future_deprecation : String? = nil,
+      @timeout : Int64? = nil,
     )
       # Normalize include_path to always be an Array(String) or nil
       case include_path
@@ -126,7 +130,8 @@ module Sass
         bin_path: @bin_path || other.bin_path,
         fatal_deprecation: @fatal_deprecation || other.fatal_deprecation,
         silence_deprecation: merge_deprecation_list(@silence_deprecation, other.silence_deprecation),
-        future_deprecation: @future_deprecation || other.future_deprecation
+        future_deprecation: @future_deprecation || other.future_deprecation,
+        timeout: @timeout || other.timeout
       )
     end
 

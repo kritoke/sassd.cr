@@ -395,12 +395,32 @@ module Sass
     # Use the resolved bin path from class variable if config doesn't specify one
     actual_bin_path = config.bin_path || @@bin_path
     output, error = IO::Memory.new, IO::Memory.new
-    status = Process.run(actual_bin_path, args: args, input: input || Process::Redirect::Close, output: output, error: error)
 
-    if status.success?
-      output.to_s
+    if (timeout_val = config.timeout)
+      # Use timeout via spawn/receive pattern for portability
+      channel = Channel(Tuple(Int32, String, String)).new
+      spawn do
+        status = Process.run(actual_bin_path, args: args, input: input || Process::Redirect::Close, output: output, error: error)
+        channel.send({status.exit_code, output.to_s, error.to_s})
+      end
+
+      select
+      when result = channel.receive
+        exit_code, stdout, stderr = result
+        handle_sass_result(exit_code, stdout, stderr, error_prefix)
+      when timeout(timeout_val.seconds)
+        raise Sass::TimeoutError.new("Compilation timed out after #{timeout_val} seconds")
+      end
     else
-      # Provide more specific error messages based on the error content
+      status = Process.run(actual_bin_path, args: args, input: input || Process::Redirect::Close, output: output, error: error)
+      handle_sass_result(status.exit_code, output.to_s, error.to_s, error_prefix)
+    end
+  end
+
+  private def self.handle_sass_result(exit_code : Int32, output : String, error : String, error_prefix : String) : String
+    if exit_code == 0
+      output
+    else
       error_output = error.to_s
       if error_output.includes?("Invalid CSS")
         raise Sass::InvalidSourceError.new("#{error_prefix}:\n#{error_output}")
@@ -532,6 +552,7 @@ module Sass
     fatal_deprecation : String? = nil,
     silence_deprecation : Array(String)? = nil,
     future_deprecation : String? = nil,
+    timeout : Int64? = nil,
   ) : Config
     Config.new(
       style: style || config.style,
@@ -551,7 +572,8 @@ module Sass
       bin_path: bin_path.nil? ? config.bin_path : bin_path,
       fatal_deprecation: fatal_deprecation.nil? ? config.fatal_deprecation : fatal_deprecation,
       silence_deprecation: silence_deprecation.nil? ? config.silence_deprecation : silence_deprecation,
-      future_deprecation: future_deprecation.nil? ? config.future_deprecation : future_deprecation
+      future_deprecation: future_deprecation.nil? ? config.future_deprecation : future_deprecation,
+      timeout: timeout.nil? ? config.timeout : timeout
     )
   end
 

@@ -55,6 +55,9 @@ module Sass
       args
     end
 
+    # Note: --trace is a debug flag passed directly to Dart Sass
+    # It's not an option we track in config, but can be added if needed
+
     private def self.load_path_args(config : Config) : Array(String)
       paths = [] of String
       config.load_paths.try &.each do |p|

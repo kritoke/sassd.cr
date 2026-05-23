@@ -38,6 +38,8 @@ struct Sass::CLI::Options
   property silence_deprecation = [] of String
   property future_deprecation : String?
   property stdin : Bool = false
+  property timeout : Int64?
+
 
   def initialize
   end
@@ -72,6 +74,15 @@ module Sass::CLI
         options.force = true
       when "--stdin"
         options.stdin = true
+      when "--timeout"
+        next_index = i + 1
+        if next_index < args.size
+          options.timeout = args[next_index].to_i64
+          i += 1
+        else
+          STDERR.puts "Error: --timeout requires a value"
+          exit 1
+        end
       else
         result = parse_option(arg, args, i)
         if result
@@ -123,6 +134,10 @@ module Sass::CLI
       options.silence_deprecation << value.as(String)
     when "future-deprecation"
       options.future_deprecation = value.as(String)
+    when "timeout"
+      if value
+        options.timeout = value.to_i64
+      end
     end
   end
 
@@ -164,7 +179,8 @@ module Sass::CLI
       config,
       fatal_deprecation: options.fatal_deprecation,
       silence_deprecation: options.silence_deprecation.empty? ? nil : options.silence_deprecation,
-      future_deprecation: options.future_deprecation
+      future_deprecation: options.future_deprecation,
+      timeout: options.timeout
     )
 
     begin
@@ -246,6 +262,7 @@ module Sass::CLI
         --fatal-deprecation <version> Treat deprecations up to version as errors
         --silence-deprecation <name>  Suppress specific deprecation warning
         --future-deprecation <version> Opt-in to deprecations from future version
+        --timeout <seconds>         Set compilation timeout in seconds
 
       Examples:
         sassd styles.scss
