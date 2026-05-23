@@ -62,6 +62,15 @@ module Sass
     # Path to the sass executable
     getter bin_path : String?
 
+    # Deprecation severity level to treat as errors
+    getter fatal_deprecation : String?
+
+    # Deprecations to ignore (by name or Sass version)
+    getter silence_deprecation : Array(String)?
+
+    # Opt-in to deprecations from a future version
+    getter future_deprecation : String?
+
     # Creates a new configuration with the specified options.
     #
     # All parameters have sensible defaults that match the original
@@ -82,6 +91,9 @@ module Sass
       @is_indented_syntax_src : Bool = false,
       @min_version : String? = nil,
       @bin_path : String? = nil,
+      @fatal_deprecation : String? = nil,
+      @silence_deprecation : Array(String)? = nil,
+      @future_deprecation : String? = nil,
     )
       # Normalize include_path to always be an Array(String) or nil
       case include_path
@@ -111,7 +123,10 @@ module Sass
         include_path: merge_include_paths(@include_path, other.include_path),
         is_indented_syntax_src: @is_indented_syntax_src,
         min_version: @min_version || other.min_version,
-        bin_path: @bin_path || other.bin_path
+        bin_path: @bin_path || other.bin_path,
+        fatal_deprecation: @fatal_deprecation || other.fatal_deprecation,
+        silence_deprecation: merge_deprecation_list(@silence_deprecation, other.silence_deprecation),
+        future_deprecation: @future_deprecation || other.future_deprecation
       )
     end
 
@@ -119,6 +134,13 @@ module Sass
       return current if current && other.nil?
       return other if current.nil? && other
       return [] of String if current.nil? && other.nil?
+      (current || [] of String) + (other || [] of String)
+    end
+
+    private def merge_deprecation_list(current : Array(String)?, other : Array(String)?) : Array(String)?
+      return current if current && other.nil?
+      return other if current.nil? && other
+      return nil if current.nil? && other.nil?
       (current || [] of String) + (other || [] of String)
     end
 

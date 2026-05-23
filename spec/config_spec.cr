@@ -224,4 +224,28 @@ SCSS
       Sass.compile_file("spec/non_existent_file.scss")
     end
   end
+
+  describe "deprecation control" do
+    it "supports fatal_deprecation option" do
+      config = Sass::Config.new(fatal_deprecation: "1.100.0")
+      config.fatal_deprecation.should eq("1.100.0")
+    end
+
+    it "supports silence_deprecation option" do
+      config = Sass::Config.new(silence_deprecation: ["import", "function-units"])
+      config.silence_deprecation.should eq(["import", "function-units"])
+    end
+
+    it "supports future_deprecation option" do
+      config = Sass::Config.new(future_deprecation: "1.101.0")
+      config.future_deprecation.should eq("1.101.0")
+    end
+
+    it "merges configs with deprecation options" do
+      config1 = Sass::Config.new(silence_deprecation: ["import"])
+      config2 = Sass::Config.new(silence_deprecation: ["function-units"])
+      merged = config1.merge(config2)
+      merged.silence_deprecation.should eq(["import", "function-units"])
+    end
+  end
 end

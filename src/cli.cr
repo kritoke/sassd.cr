@@ -34,13 +34,16 @@ struct Sass::CLI::Options
   property verbose : Bool = false
   property load_paths = [] of String
   property force : Bool = false
+  property fatal_deprecation : String?
+  property silence_deprecation = [] of String
+  property future_deprecation : String?
 
   def initialize
   end
 end
 
 # Simple CLI argument parser
-class Sass::CLI
+module Sass::CLI
   def self.run(args : Array(String))
     if args.empty?
       show_help
@@ -71,7 +74,7 @@ class Sass::CLI
         if result
           flag, value = result
           apply_option(options, flag, value)
-          i += 1 if flag.has_value?
+          i += 1 if flag.needs_value
         else
           handle_positional_arg(options, arg)
         end
@@ -83,11 +86,11 @@ class Sass::CLI
   end
 
   private def self.parse_option(arg : String, args : Array(String), index : Int32)
-    option = OPTIONMAP.find { |k, _| k == arg }
+    option = Sass::CLI::OPTIONMAP::MAP[arg]?
     return unless option
 
-    flag = option[1]
-    if flag.has_value?
+    flag = option
+    if flag.needs_value
       next_index = index + 1
       if next_index < args.size
         {flag, args[next_index]}
@@ -111,6 +114,12 @@ class Sass::CLI
     when "verbose"          then options.verbose = true
     when "load-path"        then options.load_paths << value.as(String)
     when "output"           then options.output_file = value.as(String)
+    when "fatal-deprecation"
+      options.fatal_deprecation = value.as(String)
+    when "silence-deprecation"
+      options.silence_deprecation << value.as(String)
+    when "future-deprecation"
+      options.future_deprecation = value.as(String)
     end
   end
 
@@ -148,6 +157,13 @@ class Sass::CLI
       verbose: options.verbose,
       include_path: nil,
       is_indented_syntax_src: false
+    )
+
+    config = Sass.update_config(
+      config,
+      fatal_deprecation: options.fatal_deprecation,
+      silence_deprecation: options.silence_deprecation.empty? ? nil : options.silence_deprecation,
+      future_deprecation: options.future_deprecation
     )
 
     begin
@@ -205,6 +221,9 @@ class Sass::CLI
         --load-path <path>    Add a load path for imports
         --output, -o <file>   Write output to file instead of stdout
         --force, -f            Overwrite output file without prompting
+        --fatal-deprecation <version> Treat deprecations up to version as errors
+        --silence-deprecation <name>  Suppress specific deprecation warning
+        --future-deprecation <version> Opt-in to deprecations from future version
 
       Examples:
         sassd styles.scss
@@ -230,37 +249,42 @@ end
 
 struct Sass::CLI::Flag
   getter name : String
-  getter has_value : Bool
+  getter needs_value : Bool
+
+  def initialize(@name : String, @needs_value : Bool)
+  end
 end
 
 module Sass::CLI::OPTIONMAP
+  MAP = {
+    "--style" => Flag.new("style", true),
+    "--source-map" => Flag.new("source-map", false),
+    "--embed-source-map" => Flag.new("embed-source-map", false),
+    "--source-map-urls" => Flag.new("source-map-urls", true),
+    "--embed-sources" => Flag.new("embed-sources", false),
+    "--no-charset" => Flag.new("no-charset", false),
+    "--no-error-css" => Flag.new("no-error-css", false),
+    "--quiet" => Flag.new("quiet", false),
+    "--quiet-deps" => Flag.new("quiet-deps", false),
+    "--verbose" => Flag.new("verbose", false),
+    "--load-path" => Flag.new("load-path", true),
+    "--output" => Flag.new("output", true),
+    "-o" => Flag.new("output", true),
+    "--fatal-deprecation" => Flag.new("fatal-deprecation", true),
+    "--silence-deprecation" => Flag.new("silence-deprecation", true),
+    "--future-deprecation" => Flag.new("future-deprecation", true),
+  }
+
   def self.[]=(key, value)
-    @@map[key] = value
+    raise "OPTIONMAP is read-only"
   end
 
   def self.[](key)
-    @@map[key]?
+    MAP[key]?
   end
 
   def self.find(&block)
-    @@map.find(&block)
-  end
-
-  def self.init
-    @@map = {} of String => Flag
-    @@map["--style"] = Flag.new("style", true)
-    @@map["--source-map"] = Flag.new("source-map", false)
-    @@map["--embed-source-map"] = Flag.new("embed-source-map", false)
-    @@map["--source-map-urls"] = Flag.new("source-map-urls", true)
-    @@map["--embed-sources"] = Flag.new("embed-sources", false)
-    @@map["--no-charset"] = Flag.new("no-charset", false)
-    @@map["--no-error-css"] = Flag.new("no-error-css", false)
-    @@map["--quiet"] = Flag.new("quiet", false)
-    @@map["--quiet-deps"] = Flag.new("quiet-deps", false)
-    @@map["--verbose"] = Flag.new("verbose", false)
-    @@map["--load-path"] = Flag.new("load-path", true)
-    @@map["--output"] = Flag.new("output", true)
-    @@map["-o"] = Flag.new("output", true)
+    MAP.find(&block)
   end
 end
 
@@ -269,6 +293,5 @@ module Sassd
   VERSION = "0.3.0"
 end
 
-# Initialize option map and run the CLI
-Sass::CLI::OPTIONMAP.init
+# Run the CLI
 Sass::CLI.run(ARGV)

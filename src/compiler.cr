@@ -529,6 +529,9 @@ module Sass
     is_indented_syntax_src : Bool? = nil,
     min_version : String? = nil,
     bin_path : String? = nil,
+    fatal_deprecation : String? = nil,
+    silence_deprecation : Array(String)? = nil,
+    future_deprecation : String? = nil,
   ) : Config
     Config.new(
       style: style || config.style,
@@ -545,7 +548,10 @@ module Sass
       include_path: include_path.nil? ? config.include_path : include_path,
       is_indented_syntax_src: is_indented_syntax_src || config.is_indented_syntax_src,
       min_version: min_version.nil? ? config.min_version : min_version,
-      bin_path: bin_path.nil? ? config.bin_path : bin_path
+      bin_path: bin_path.nil? ? config.bin_path : bin_path,
+      fatal_deprecation: fatal_deprecation.nil? ? config.fatal_deprecation : fatal_deprecation,
+      silence_deprecation: silence_deprecation.nil? ? config.silence_deprecation : silence_deprecation,
+      future_deprecation: future_deprecation.nil? ? config.future_deprecation : future_deprecation
     )
   end
 

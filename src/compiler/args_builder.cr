@@ -10,6 +10,7 @@ module Sass
         output_args(config) +
         warning_args(config) +
         syntax_args(config) +
+        deprecation_args(config) +
         load_path_args(config)
     end
 
@@ -42,6 +43,16 @@ module Sass
 
     private def self.syntax_args(config : Config) : Array(String)
       config.is_indented_syntax_src ? ["--indented"] : [] of String
+    end
+
+    private def self.deprecation_args(config : Config) : Array(String)
+      args = [] of String
+      config.fatal_deprecation.try { |v| args << "--fatal-deprecation=#{v}" }
+      config.silence_deprecation.try &.each do |v|
+        args << "--silence-deprecation=#{v}"
+      end
+      config.future_deprecation.try { |v| args << "--future-deprecation=#{v}" }
+      args
     end
 
     private def self.load_path_args(config : Config) : Array(String)

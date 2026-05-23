@@ -4,7 +4,7 @@
 # 2) If that fails, fallback to npm "sass"
 
 # Default Dart Sass version
-export DART_VERSION := "1.98.0"
+export DART_VERSION := "1.100.0"
 
 # Set working directory
 set working-directory := "."
