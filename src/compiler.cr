@@ -345,11 +345,12 @@ module Sass
   end
 
   private def self.common_args(config : Config, source_map_embed : Bool, for_stdin = false)
-    args = ["--style=#{config.style}"]
+    args = ["--style=#{validate_style!(config.style)}"]
     args += source_map_args(config, source_map_embed, for_stdin)
 
     # Source map options
-    args << "--source-map-urls=#{config.source_map_urls}" if config.source_map_urls != "relative"
+    source_map_urls = validate_source_map_urls!(config.source_map_urls)
+    args << "--source-map-urls=#{source_map_urls}" if source_map_urls != "relative"
     args << "--embed-sources" if config.embed_sources
 
     # Charset control
@@ -505,6 +506,25 @@ module Sass
     end
 
     resolved
+  end
+
+  # Validate the output style parameter
+  # Dart Sass supports: expanded, compressed, nested (deprecated)
+  private def self.validate_style!(style : String) : String
+    allowed_styles = {"expanded", "compressed"}
+    unless allowed_styles.includes?(style)
+      raise Sass::CompilationError.new("Invalid style '#{style}'. Allowed values: #{allowed_styles.join(", ")}")
+    end
+    style
+  end
+
+  # Validate the source map URLs parameter
+  private def self.validate_source_map_urls!(urls : String) : String
+    allowed_urls = {"relative", "absolute"}
+    unless allowed_urls.includes?(urls)
+      raise Sass::CompilationError.new("Invalid source-map-urls '#{urls}'. Allowed values: #{allowed_urls.join(", ")}")
+    end
+    urls
   end
 
   # Convert legacy API parameters to Config object
