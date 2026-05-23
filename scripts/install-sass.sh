@@ -4,7 +4,7 @@ set -e
 # Install Dart Sass script
 # This script is called by the Justfile to install Dart Sass
 
-DART_VERSION="${DART_VERSION:-1.98.0}"
+DART_VERSION="${DART_VERSION:-1.100.0}"
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

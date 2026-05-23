@@ -274,13 +274,13 @@ describe "API Compatibility with sass.cr" do
     end
 
     it "supports Sass.min_version property" do
-      Sass.min_version.should eq("1.98.0")
+      Sass.min_version.should eq("1.100.0")
 
       Sass.min_version = "1.97.0"
       Sass.min_version.should eq("1.97.0")
 
       # Restore
-      Sass.min_version = "1.98.0"
+      Sass.min_version = "1.100.0"
     end
   end
 

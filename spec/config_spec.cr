@@ -36,7 +36,7 @@ describe Sass::Config do
       load_paths: ["./lib", "./vendor"],
       include_path: "./includes",
       is_indented_syntax_src: true,
-      min_version: "1.98.0",
+      min_version: "1.100.0",
       bin_path: "/custom/sass"
     )
 
@@ -53,7 +53,7 @@ describe Sass::Config do
     config.load_paths.should eq(["./lib", "./vendor"])
     config.include_path.should eq(["./includes"])
     config.is_indented_syntax_src.should be_true
-    config.min_version.should eq("1.98.0")
+    config.min_version.should eq("1.100.0")
     config.bin_path.should eq("/custom/sass")
   end
 
@@ -83,7 +83,7 @@ describe Sass::Config do
       style: "compressed",
       source_map: true,
       load_paths: ["./override"],
-      min_version: "1.98.0"
+      min_version: "1.100.0"
     )
 
     merged = base_config.merge(override_config)
@@ -92,7 +92,7 @@ describe Sass::Config do
     merged.style.should eq("expanded")
     merged.source_map.should be_false
     merged.load_paths.should eq(["./base", "./override"])
-    merged.min_version.should eq("1.98.0")
+    merged.min_version.should eq("1.100.0")
   end
 end
 

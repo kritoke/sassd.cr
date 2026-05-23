@@ -83,7 +83,7 @@ module Sass
 
   # The minimum required version of Dart Sass.
   def self.min_version
-    default_config.min_version || "1.98.0"
+    default_config.min_version || "1.100.0"
   end
 
   def self.min_version=(version : String)
