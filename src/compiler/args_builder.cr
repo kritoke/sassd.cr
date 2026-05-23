@@ -56,10 +56,12 @@ module Sass
     private def self.load_path_args(config : Config) : Array(String)
       paths = [] of String
       config.load_paths.try &.each do |p|
+        next if p.nil? || p.empty?
         Sass.validate_path!(p)
         paths << p
       end
       config.include_path.try &.each do |p|
+        next if p.nil? || p.empty?
         Sass.validate_path!(p)
         paths << p
       end

@@ -38,6 +38,10 @@ module Sass
   FRONT_MATTER_SPLIT_PARTS = 3
   # Executable permission bits (rwx for user/group/other)
   EXECUTABLE_PERMISSION_MASK = 0o111
+  # Maximum input file size (10MB) to prevent memory exhaustion
+  MAX_INPUT_FILE_SIZE = 10 * 1024 * 1024
+  # Maximum stdin source size (1MB) to prevent memory exhaustion
+  MAX_STDIN_SIZE = 1 * 1024 * 1024
 
   # ⚠️ Thread Safety Note:
   # This module uses class variables for global state (bin_path, default_config).
@@ -207,6 +211,11 @@ module Sass
   # New config-based API
   def self.compile(source : String,
                    config : Config = default_config) : String
+    if source.bytesize > MAX_STDIN_SIZE
+      raise Sass::CompilationError.new(
+        "Input too large: #{source.bytesize} bytes (max: #{MAX_STDIN_SIZE})"
+      )
+    end
     args = ["--stdin"]
     # Note: source_path is not supported in current Dart Sass, so we ignore it
     # Note: source_map with stdin requires embed_source_map
@@ -260,6 +269,12 @@ module Sass
 
     # Handle Jekyll-style YAML front matter by stripping it before compilation
     if File.exists?(resolved_path)
+      file_size = File.size(resolved_path)
+      if file_size > MAX_INPUT_FILE_SIZE
+        raise Sass::FileReadError.new(
+          "Input file too large: #{file_size} bytes (max: #{MAX_INPUT_FILE_SIZE})"
+        )
+      end
       content = File.read(resolved_path)
       if content.starts_with?("---")
         parts = content.split("---", FRONT_MATTER_SPLIT_PARTS)
