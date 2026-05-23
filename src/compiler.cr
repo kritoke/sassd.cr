@@ -27,6 +27,8 @@
 # - `Sass::InvalidSourceError` - Invalid CSS/Sass source
 # - `Sass::FileReadError` - File reading errors
 # - `Sass::TemporaryFileError` - Temporary file handling errors
+require "./compiler/args_builder"
+require "./compiler/validator"
 require "process"
 require "io/memory"
 require "semantic_version"
@@ -350,55 +352,7 @@ module Sass
   end
 
   private def self.common_args(config : Config, source_map_embed : Bool, for_stdin = false) : Array(String)
-    style_args(config) +
-      source_map_args(config, source_map_embed, for_stdin) +
-      output_args(config) +
-      warning_args(config) +
-      syntax_args(config) +
-      load_path_args(config)
-  end
-
-  private def self.style_args(config : Config) : Array(String)
-    ["--style=#{validate_style!(config.style)}"]
-  end
-
-  private def self.output_args(config : Config) : Array(String)
-    args = [] of String
-    source_map_urls = validate_source_map_urls!(config.source_map_urls)
-    args << "--source-map-urls=#{source_map_urls}" if source_map_urls != "relative"
-    args << "--embed-sources" if config.embed_sources
-    args << "--no-charset" unless config.charset
-    args << "--no-error-css" unless config.error_css
-    args
-  end
-
-  private def self.warning_args(config : Config) : Array(String)
-    args = [] of String
-    args << "--quiet" if config.quiet
-    args << "--quiet-deps" if config.quiet_deps
-    args << "--verbose" if config.verbose
-    args
-  end
-
-  private def self.syntax_args(config : Config) : Array(String)
-    config.is_indented_syntax_src ? ["--indented"] : [] of String
-  end
-
-  private def self.load_path_args(config : Config) : Array(String)
-    resolve_load_paths(config.load_paths, config.include_path).map { |path| "--load-path=#{path}" }
-  end
-
-  private def self.source_map_args(config : Config, source_map_embed : Bool, for_stdin : Bool) : Array(String)
-    args = [] of String
-    if source_map_embed
-      args << "--embed-source-map"
-    elsif config.source_map && !for_stdin
-      # Don't generate source maps for stdin without embedding (not supported)
-      args << "--source-map"
-    else
-      args << "--no-source-map"
-    end
-    args
+    ArgsBuilder.build(config, source_map_embed, for_stdin)
   end
 
   private def self.execute_sass(args : Array(String), config : Config, input : IO? = nil, error_prefix : String = "Sass Compilation Failed") : String
@@ -466,83 +420,27 @@ module Sass
 
   # Validate a file path for security concerns
   def self.validate_path!(path : String)
-    # Check for null bytes which could be used for injection attacks
-    if path.includes?("\0")
-      raise Sass::InvalidSourceError.new("Invalid path contains null bytes: #{path}")
-    end
-
-    # Check for obvious directory traversal attempts
-    # Note: This is a basic check - File.expand_path provides additional protection
-    normalized_path = path.gsub(%r{/+}, "/") # Normalize multiple slashes
-    if normalized_path.includes?("../") || normalized_path.includes?("..\\")
-      raise Sass::InvalidSourceError.new("Path validation failed - potential directory traversal attempt: #{path}")
-    end
+    Validator.validate_path!(path)
   end
 
   # Validate and resolve a file path to prevent path traversal
-  # Returns the canonical, expanded path after validation
   def self.validate_and_resolve_path!(path : String, base_dir : String? = nil) : String
-    # First run basic validation
-    validate_path!(path)
-
-    # Use File.expand_path to resolve relative paths and symlinks
-    if base_dir
-      expanded = File.expand_path(path, base_dir)
-    else
-      expanded = File.expand_path(path)
-    end
-
-    # Verify the expanded path is safe (doesn't escape base_dir if provided)
-    if base_dir
-      base_expanded = File.expand_path(base_dir)
-      # Normalize and ensure the path is within the base directory
-      if !expanded.starts_with?(base_expanded + "/") && expanded != base_expanded
-        raise Sass::InvalidSourceError.new("Path escapes base directory: #{path}")
-      end
-    end
-
-    expanded
+    Validator.validate_and_resolve_path!(path, base_dir)
   end
 
   # Validate a binary path for command execution
-  # Ensures the path is a valid, existing executable
   def self.validate_bin_path!(bin_path : String) : String
-    validate_path!(bin_path)
-
-    # Resolve to absolute path
-    resolved = File.expand_path(bin_path)
-
-    # Verify it's an actual file and executable
-    unless File.file?(resolved)
-      raise Sass::BinaryNotFoundError.new("Binary path is not a file: #{bin_path}")
-    end
-
-    # Check executable bit using File.info permissions (avoid deprecated File.executable?)
-    file_info = File.info(resolved)
-    unless (file_info.permissions.value & EXECUTABLE_PERMISSION_MASK) != 0
-      raise Sass::BinaryNotFoundError.new("Binary path is not executable: #{bin_path}")
-    end
-
-    resolved
+    Validator.validate_bin_path!(bin_path)
   end
 
   # Validate the output style parameter
-  # Dart Sass supports: expanded, compressed, nested (deprecated)
   private def self.validate_style!(style : String) : String
-    allowed_styles = {"expanded", "compressed"}
-    unless allowed_styles.includes?(style)
-      raise Sass::CompilationError.new("Invalid style '#{style}'. Allowed values: #{allowed_styles.join(", ")}")
-    end
-    style
+    Validator.validate_style!(style)
   end
 
   # Validate the source map URLs parameter
   private def self.validate_source_map_urls!(urls : String) : String
-    allowed_urls = {"relative", "absolute"}
-    unless allowed_urls.includes?(urls)
-      raise Sass::CompilationError.new("Invalid source-map-urls '#{urls}'. Allowed values: #{allowed_urls.join(", ")}")
-    end
-    urls
+    Validator.validate_source_map_urls!(urls)
   end
 
   # Convert legacy API parameters to Config object
