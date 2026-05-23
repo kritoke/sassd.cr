@@ -221,11 +221,8 @@ class Sass::CLI
 end
 
 struct Sass::CLI::Flag
-  property name : String
-  property has_value : Bool
-
-  def initialize(@name : String, @has_value : Bool)
-  end
+  getter name : String
+  getter has_value : Bool
 end
 
 module Sass::CLI::OPTIONMAP

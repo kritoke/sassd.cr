@@ -32,6 +32,11 @@ require "io/memory"
 require "semantic_version"
 
 module Sass
+  # YAML front matter delimiter count for split operation
+  FRONT_MATTER_SPLIT_PARTS = 3
+  # Executable permission bits (rwx for user/group/other)
+  EXECUTABLE_PERMISSION_MASK = 0o111
+
   # Default configuration instance
   @@default_config : Config? = nil
 
@@ -239,8 +244,8 @@ module Sass
     if File.exists?(resolved_path)
       content = File.read(resolved_path)
       if content.starts_with?("---")
-        parts = content.split("---", 3)
-        if parts.size == 3
+        parts = content.split("---", FRONT_MATTER_SPLIT_PARTS)
+        if parts.size == FRONT_MATTER_SPLIT_PARTS
           # Process YAML front matter in-memory instead of using temporary files
           # Extract the Sass content after the YAML front matter
           sass_content = parts[2]
@@ -344,30 +349,43 @@ module Sass
     nil
   end
 
-  private def self.common_args(config : Config, source_map_embed : Bool, for_stdin = false)
-    args = ["--style=#{validate_style!(config.style)}"]
-    args += source_map_args(config, source_map_embed, for_stdin)
+  private def self.common_args(config : Config, source_map_embed : Bool, for_stdin = false) : Array(String)
+    style_args(config) +
+      source_map_args(config, source_map_embed, for_stdin) +
+      output_args(config) +
+      warning_args(config) +
+      syntax_args(config) +
+      load_path_args(config)
+  end
 
-    # Source map options
+  private def self.style_args(config : Config) : Array(String)
+    ["--style=#{validate_style!(config.style)}"]
+  end
+
+  private def self.output_args(config : Config) : Array(String)
+    args = [] of String
     source_map_urls = validate_source_map_urls!(config.source_map_urls)
     args << "--source-map-urls=#{source_map_urls}" if source_map_urls != "relative"
     args << "--embed-sources" if config.embed_sources
-
-    # Charset control
     args << "--no-charset" unless config.charset
-
-    # Error CSS generation
     args << "--no-error-css" unless config.error_css
+    args
+  end
 
-    # Warning/deprecation options
+  private def self.warning_args(config : Config) : Array(String)
+    args = [] of String
     args << "--quiet" if config.quiet
     args << "--quiet-deps" if config.quiet_deps
     args << "--verbose" if config.verbose
-
-    # Syntax and load paths
-    args << "--indented" if config.is_indented_syntax_src
-    resolve_load_paths(config.load_paths, config.include_path).each { |path| args << "--load-path=#{path}" }
     args
+  end
+
+  private def self.syntax_args(config : Config) : Array(String)
+    config.is_indented_syntax_src ? ["--indented"] : [] of String
+  end
+
+  private def self.load_path_args(config : Config) : Array(String)
+    resolve_load_paths(config.load_paths, config.include_path).map { |path| "--load-path=#{path}" }
   end
 
   private def self.source_map_args(config : Config, source_map_embed : Bool, for_stdin : Bool) : Array(String)
@@ -501,7 +519,7 @@ module Sass
 
     # Check executable bit using File.info permissions (avoid deprecated File.executable?)
     file_info = File.info(resolved)
-    unless (file_info.permissions.value & 0o111) != 0
+    unless (file_info.permissions.value & EXECUTABLE_PERMISSION_MASK) != 0
       raise Sass::BinaryNotFoundError.new("Binary path is not executable: #{bin_path}")
     end
 
