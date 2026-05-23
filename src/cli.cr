@@ -37,6 +37,7 @@ struct Sass::CLI::Options
   property fatal_deprecation : String?
   property silence_deprecation = [] of String
   property future_deprecation : String?
+  property stdin : Bool = false
 
   def initialize
   end
@@ -69,6 +70,8 @@ module Sass::CLI
         exit 0
       when "--force", "-f"
         options.force = true
+      when "--stdin"
+        options.stdin = true
       else
         result = parse_option(arg, args, i)
         if result
@@ -136,12 +139,10 @@ module Sass::CLI
   end
 
   private def self.validate_and_execute(options : Options)
-    if options.input_file.nil?
-      STDERR.puts "Error: Input file is required"
+    if options.input_file.nil? && !options.stdin
+      STDERR.puts "Error: Input file is required (or use --stdin to read from stdin)"
       exit 1
     end
-
-    validate_paths(options)
 
     config = Sass.legacy_params_to_config(
       style: options.style,
@@ -167,12 +168,18 @@ module Sass::CLI
     )
 
     begin
-      result = Sass.compile_file(options.input_file.as(String), config)
-      if options.output_file
-        if File.exists?(options.output_file.as(String)) && !options.force
-          STDERR.puts "Error: Output file '#{options.output_file}' already exists. Use --force to overwrite."
+      result = if options.stdin
+        content = STDIN.gets_to_end
+        if content.empty?
+          STDERR.puts "Error: No input provided via stdin. Use --stdin with piped content."
           exit 1
         end
+        Sass.compile(content, config)
+      else
+        Sass.compile_file(options.input_file.as(String), config)
+      end
+      if options.output_file
+        validate_output_file(options.output_file, options.force)
         File.write(options.output_file.as(String), result)
       else
         puts result
@@ -183,14 +190,27 @@ module Sass::CLI
     end
   end
 
+  private def self.validate_input_file(input_file : String?)
+    return if input_file
+    STDERR.puts "Error: Input file is required (or use --stdin to read from stdin)"
+    exit 1
+  end
+
+  private def self.validate_output_file(output_file : String?, force : Bool)
+    return unless output_file
+    return if force || !File.exists?(output_file)
+    STDERR.puts "Error: Output file '#{output_file}' already exists. Use --force to overwrite."
+    exit 1
+  end
+
   private def self.validate_paths(options : Options)
+    return if options.stdin
     begin
       Sass.validate_path!(options.input_file.as(String))
     rescue ex : Sass::InvalidSourceError
       STDERR.puts "Path validation error: #{ex.message}"
       exit 1
     end
-
     if options.output_file
       begin
         Sass.validate_path!(options.output_file.as(String))
@@ -204,11 +224,13 @@ module Sass::CLI
   private def self.show_help
     puts <<-HELP
       Usage: sassd [options] <input_file> [-o <output_file>]
+            sassd --stdin [-o <output_file>]
 
       Options:
         --help, -h            Show this help message
         --version, -v         Show version information
-        --style <style>       Output style (expanded, compressed) [default: expanded]
+        --stdin                Read stylesheet from stdin
+        --style <style>        Output style (expanded, compressed) [default: expanded]
         --source-map          Generate source map
         --embed-source-map    Embed source map in CSS output
         --source-map-urls <type> Source map URLs format (relative, absolute) [default: relative]
@@ -273,6 +295,7 @@ module Sass::CLI::OPTIONMAP
     "--fatal-deprecation" => Flag.new("fatal-deprecation", true),
     "--silence-deprecation" => Flag.new("silence-deprecation", true),
     "--future-deprecation" => Flag.new("future-deprecation", true),
+    "--stdin" => Flag.new("stdin", false),
   }
 
   def self.[]=(key, value)
