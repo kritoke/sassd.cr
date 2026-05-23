@@ -152,7 +152,7 @@ class Sass::CLI
 
     begin
       result = Sass.compile_file(options.input_file.as(String), config)
-    if options.output_file
+      if options.output_file
         if File.exists?(options.output_file.as(String)) && !options.force
           STDERR.puts "Error: Output file '#{options.output_file}' already exists. Use --force to overwrite."
           exit 1
