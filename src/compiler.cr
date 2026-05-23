@@ -34,6 +34,10 @@ require "io/memory"
 require "semantic_version"
 
 module Sass
+  # Allowed output styles for Dart Sass
+  ALLOWED_STYLES = {"expanded", "compressed"}
+  # Allowed source map URL types
+  ALLOWED_SOURCE_MAP_URLS = {"relative", "absolute"}
   # YAML front matter delimiter count for split operation
   FRONT_MATTER_SPLIT_PARTS = 3
   # Executable permission bits (rwx for user/group/other)

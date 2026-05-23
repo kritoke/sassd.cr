@@ -1,15 +1,8 @@
 # CLI Argument Builder for Sass compilation
 #
-# This module is responsible for building the command-line arguments
-# passed to the Dart Sass executable. It encapsulates all argument
-# construction logic for better maintainability and testing.
+# Builds CLI arguments for Dart Sass from Config objects.
 module Sass
   module ArgsBuilder
-    # Allowed output styles for Dart Sass
-    ALLOWED_STYLES = {"expanded", "compressed"}
-    # Allowed source map URL types
-    ALLOWED_SOURCE_MAP_URLS = {"relative", "absolute"}
-
     # Build all common arguments for Sass execution
     def self.build(config : Config, source_map_embed : Bool, for_stdin = false) : Array(String)
       style_args(config) +
@@ -22,10 +15,8 @@ module Sass
 
     private def self.style_args(config : Config) : Array(String)
       style = config.style
-      unless ALLOWED_STYLES.includes?(style)
-        raise Sass::CompilationError.new("Invalid style '#{style}'. Allowed values: #{ALLOWED_STYLES.join(", ")}")
-      end
-      ["--style=#{style}"]
+      return ["--style=#{style}"] if ALLOWED_STYLES.includes?(style)
+      raise Sass::CompilationError.new("Invalid style '#{style}'. Allowed: #{ALLOWED_STYLES.join(", ")}")
     end
 
     private def self.output_args(config : Config) : Array(String)
@@ -69,17 +60,9 @@ module Sass
     end
 
     private def self.source_map_args(config : Config, source_map_embed : Bool, for_stdin : Bool) : Array(String)
-      args = [] of String
-      if source_map_embed
-        args << "--embed-source-map"
-      elsif config.source_map && !for_stdin
-        # Don't generate source maps for stdin without embedding (not supported)
-        args << "--source-map"
-      else
-        args << "--no-source-map"
-      end
-      args
+      return ["--no-source-map"] unless source_map_embed || config.source_map
+      return ["--no-source-map"] if for_stdin && !source_map_embed
+      source_map_embed ? ["--embed-source-map"] : ["--source-map"]
     end
-
   end
 end
