@@ -40,5 +40,8 @@ lib/
 \sassd
 \cli
 
+.catseye/
+.catseye.toml
+
 openspec
 planning/
