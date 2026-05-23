@@ -39,6 +39,22 @@ module Sass
   # Executable permission bits (rwx for user/group/other)
   EXECUTABLE_PERMISSION_MASK = 0o111
 
+  # ⚠️ Thread Safety Note:
+  # This module uses class variables for global state (bin_path, default_config).
+  # In multithreaded environments (e.g., web servers), consider:
+  # - Using per-request Config instances
+  # - Initializing bin_path at application startup
+  # - Using fiber-local storage for thread isolation
+  #
+  # Current class variables are safe for:
+  # - Single-threaded CLI usage
+  # - Applications with one-time initialization
+  # - Read-mostly workloads after initial setup
+  #
+  # They are NOT safe for:
+  # - Dynamic bin_path changes during runtime in multithreaded apps
+  # - Per-request configuration isolation
+
   # Default configuration instance
   @@default_config : Config? = nil
 

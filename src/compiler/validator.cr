@@ -2,6 +2,8 @@
 #
 # This module encapsulates all security-related validation logic
 # for file paths, binary paths, and configuration values.
+require "uri"
+
 module Sass
   module Validator
     # Check for null bytes which could be used for injection attacks
@@ -25,7 +27,20 @@ module Sass
     def self.validate_and_resolve_path!(path : String, base_dir : String? = nil) : String
       validate_path!(path)
 
+      # Check URL-encoded traversal before expanding
+      decoded = URI.decode(path)
+      normalized_decoded = decoded.gsub(%r{/+}, "/")
+      if normalized_decoded.includes?("../") || normalized_decoded.includes?("..\\")
+        raise Sass::InvalidSourceError.new("#{TRAVERSAL_ERROR}: #{path} (decoded)")
+      end
+
       expanded = base_dir ? File.expand_path(path, base_dir) : File.expand_path(path)
+
+      # Also check the expanded path for any encoded traversal that expand_path might reveal
+      expanded_decoded = URI.decode(expanded)
+      if expanded_decoded.includes?("../") || expanded_decoded.includes?("..\\")
+        raise Sass::InvalidSourceError.new("Path escapes allowed directory: #{path}")
+      end
 
       if base_dir
         base_expanded = File.expand_path(base_dir)

@@ -33,6 +33,7 @@ struct Sass::CLI::Options
   property quiet_deps : Bool = false
   property verbose : Bool = false
   property load_paths = [] of String
+  property force : Bool = false
 
   def initialize
   end
@@ -63,6 +64,8 @@ class Sass::CLI
       when "--version", "-v"
         show_version
         exit 0
+      when "--force", "-f"
+        options.force = true
       else
         result = parse_option(arg, args, i)
         if result
@@ -149,7 +152,11 @@ class Sass::CLI
 
     begin
       result = Sass.compile_file(options.input_file.as(String), config)
-      if options.output_file
+    if options.output_file
+        if File.exists?(options.output_file.as(String)) && !options.force
+          STDERR.puts "Error: Output file '#{options.output_file}' already exists. Use --force to overwrite."
+          exit 1
+        end
         File.write(options.output_file.as(String), result)
       else
         puts result
@@ -197,6 +204,7 @@ class Sass::CLI
         --verbose             Enable verbose output
         --load-path <path>    Add a load path for imports
         --output, -o <file>   Write output to file instead of stdout
+        --force, -f            Overwrite output file without prompting
 
       Examples:
         sassd styles.scss

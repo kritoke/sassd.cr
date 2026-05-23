@@ -56,11 +56,11 @@ module Sass
     private def self.load_path_args(config : Config) : Array(String)
       paths = [] of String
       config.load_paths.try &.each do |p|
-        validate_path!(p)
+        Sass.validate_path!(p)
         paths << p
       end
       config.include_path.try &.each do |p|
-        validate_path!(p)
+        Sass.validate_path!(p)
         paths << p
       end
       paths.map { |path| "--load-path=#{path}" }
@@ -79,15 +79,5 @@ module Sass
       args
     end
 
-    # Validate a file path for security concerns (delegated from Sass module)
-    private def self.validate_path!(path : String)
-      if path.includes?("\0")
-        raise Sass::InvalidSourceError.new("Invalid path contains null bytes: #{path}")
-      end
-      normalized_path = path.gsub(%r{/+}, "/")
-      if normalized_path.includes?("../") || normalized_path.includes?("..\\")
-        raise Sass::InvalidSourceError.new("Path validation failed - potential directory traversal attempt: #{path}")
-      end
-    end
   end
 end
