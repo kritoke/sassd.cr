@@ -45,3 +45,6 @@ lib/
 
 openspec
 planning/
+# Local Pi runtime state
+.atl/
+.pi/
