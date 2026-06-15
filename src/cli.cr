@@ -34,25 +34,25 @@ end
 
 module Sass::CLI::OPTIONMAP
   MAP = {
-    "--style" => Flag.new("style", true),
-    "--source-map" => Flag.new("source-map", false),
-    "--embed-source-map" => Flag.new("embed-source-map", false),
-    "--source-map-urls" => Flag.new("source-map-urls", true),
-    "--embed-sources" => Flag.new("embed-sources", false),
-    "--no-charset" => Flag.new("no-charset", false),
-    "--no-error-css" => Flag.new("no-error-css", false),
-    "--quiet" => Flag.new("quiet", false),
-    "--quiet-deps" => Flag.new("quiet-deps", false),
-    "--verbose" => Flag.new("verbose", false),
-    "--load-path" => Flag.new("load-path", true),
-    "--output" => Flag.new("output", true),
-    "-o" => Flag.new("output", true),
-    "--fatal-deprecation" => Flag.new("fatal-deprecation", true),
+    "--style"               => Flag.new("style", true),
+    "--source-map"          => Flag.new("source-map", false),
+    "--embed-source-map"    => Flag.new("embed-source-map", false),
+    "--source-map-urls"     => Flag.new("source-map-urls", true),
+    "--embed-sources"       => Flag.new("embed-sources", false),
+    "--no-charset"          => Flag.new("no-charset", false),
+    "--no-error-css"        => Flag.new("no-error-css", false),
+    "--quiet"               => Flag.new("quiet", false),
+    "--quiet-deps"          => Flag.new("quiet-deps", false),
+    "--verbose"             => Flag.new("verbose", false),
+    "--load-path"           => Flag.new("load-path", true),
+    "--output"              => Flag.new("output", true),
+    "-o"                    => Flag.new("output", true),
+    "--fatal-deprecation"   => Flag.new("fatal-deprecation", true),
     "--silence-deprecation" => Flag.new("silence-deprecation", true),
-    "--future-deprecation" => Flag.new("future-deprecation", true),
-    "--stdin" => Flag.new("stdin", false),
-    "--force" => Flag.new("force", false),
-    "-f" => Flag.new("force", false),
+    "--future-deprecation"  => Flag.new("future-deprecation", true),
+    "--stdin"               => Flag.new("stdin", false),
+    "--force"               => Flag.new("force", false),
+    "-f"                    => Flag.new("force", false),
   }
 
   def self.[]=(key, value)
@@ -180,15 +180,15 @@ module Sass::CLI
     )
 
     result = if options.stdin
-      content = STDIN.gets_to_end
-      if content.empty?
-        STDERR.puts "Error: No input provided via stdin"
-        exit 1
-      end
-      Sass.compile(content, config)
-    else
-      Sass.compile_file(options.input_file, config)
-    end
+               content = STDIN.gets_to_end
+               if content.empty?
+                 STDERR.puts "Error: No input provided via stdin"
+                 exit 1
+               end
+               Sass.compile(content, config)
+             else
+               Sass.compile_file(options.input_file, config)
+             end
 
     if output_file = options.output_file
       if File.exists?(output_file) && !options.force
@@ -232,7 +232,7 @@ module Sass::CLI
         sassd styles.scss
         sassd styles.scss -o styles.css
         cat styles.scss | sassd --stdin
-    HELP
+      HELP
   end
 
   private def self.show_version

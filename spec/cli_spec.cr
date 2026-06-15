@@ -20,7 +20,7 @@ describe "Sass CLI" do
 
   it "writes output to file with -o option" do
     File.delete("spec/cli_output.css") if File.exists?("spec/cli_output.css")
-    result = `./bin/sassd -o spec/cli_output.css spec/cli_test.scss 2>&1`
+    `./bin/sassd -o spec/cli_output.css spec/cli_test.scss 2>&1`
     File.exists?("spec/cli_output.css").should be_true
     output = File.read("spec/cli_output.css")
     output.should contain("color: cli")

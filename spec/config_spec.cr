@@ -172,11 +172,11 @@ end
 describe "YAML front matter handling" do
   it "strips YAML front matter from files" do
     content = <<-SCSS
----
-layout: default
----
-.test { color: yaml; }
-SCSS
+      ---
+      layout: default
+      ---
+      .test { color: yaml; }
+      SCSS
 
     File.write("spec/yaml_test.scss", content)
     begin
@@ -199,11 +199,11 @@ SCSS
 
   it "processes YAML front matter with source maps in-memory" do
     content = <<-SCSS
----
-layout: default
----
-.test { color: yaml-source-map; }
-SCSS
+      ---
+      layout: default
+      ---
+      .test { color: yaml-source-map; }
+      SCSS
 
     File.write("spec/yaml_source_map.scss", content)
     begin

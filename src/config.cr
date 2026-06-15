@@ -145,7 +145,7 @@ module Sass
     private def merge_deprecation_list(current : Array(String)?, other : Array(String)?) : Array(String)?
       return current if current && other.nil?
       return other if current.nil? && other
-      return nil if current.nil? && other.nil?
+      return if current.nil? && other.nil?
       (current || [] of String) + (other || [] of String)
     end
 

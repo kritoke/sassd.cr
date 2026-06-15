@@ -396,7 +396,7 @@ module Sass
     actual_bin_path = config.bin_path || @@bin_path
     output, error = IO::Memory.new, IO::Memory.new
 
-    if (timeout_val = config.timeout)
+    if timeout_val = config.timeout
       # Use timeout via spawn/receive pattern for portability
       channel = Channel(Tuple(Int32, String, String)).new
       spawn do
@@ -435,15 +435,15 @@ module Sass
   private def self.resolve_load_paths(load_paths, include_path)
     paths = [] of String
     if load_paths
-      load_paths.each do |p|
-        validate_path!(p)
-        paths << p
+      load_paths.each do |path|
+        validate_path!(path)
+        paths << path
       end
     end
     if include_path
-      include_path.each do |p|
-        validate_path!(p)
-        paths << p
+      include_path.each do |path|
+        validate_path!(path)
+        paths << path
       end
     end
     paths
@@ -461,18 +461,18 @@ module Sass
       # For default "sass", try to find it in bin directory first
       exe = Process.executable_path
       exe_dir = exe ? File.dirname(exe) : Dir.current
-      
+
       # Check multiple possible locations for the bundled sass binary
       possible_paths = [
         File.join(exe_dir, "bin", "sass"),
         File.join(Dir.current, "bin", "sass"),
         File.expand_path("./bin/sass"),
       ]
-      
+
       path = nil
-      possible_paths.each do |p|
-        if File.executable?(p)
-          path = p
+      possible_paths.each do |candidate|
+        if File.executable?(candidate)
+          path = candidate
           break
         end
       end
@@ -644,13 +644,13 @@ module Sass
       end
     end
     validate_path!(path)
-    
+
     # Ensure the path is an absolute path and exists as a file
     absolute_path = File.expand_path(path)
     unless File.file?(absolute_path)
       raise Sass::BinaryNotFoundError.new("Version check failed - path is not a file: #{path}")
     end
-    
+
     stdout, stderr = IO::Memory.new, IO::Memory.new
     status = Process.run(absolute_path, args: ["--version"], output: stdout, error: stderr)
     if status.success?

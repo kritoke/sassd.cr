@@ -60,15 +60,15 @@ module Sass
 
     private def self.load_path_args(config : Config) : Array(String)
       paths = [] of String
-      config.load_paths.try &.each do |p|
-        next if p.nil? || p.empty?
-        Sass.validate_path!(p)
-        paths << p
+      config.load_paths.try &.each do |path|
+        next if path.nil? || path.empty?
+        Sass.validate_path!(path)
+        paths << path
       end
-      config.include_path.try &.each do |p|
-        next if p.nil? || p.empty?
-        Sass.validate_path!(p)
-        paths << p
+      config.include_path.try &.each do |path|
+        next if path.nil? || path.empty?
+        Sass.validate_path!(path)
+        paths << path
       end
       paths.map { |path| "--load-path=#{path}" }
     end
