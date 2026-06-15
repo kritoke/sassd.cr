@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.3.2] - 2026-06-15
+
+### Added
+
+- stdin support in the CLI (compile from standard input)
+- Timeout handling for compilations with a new `Sass::TimeoutError` exception type
+- Deprecation control options: `fatal_deprecation`, `silence_deprecation`, `future_deprecation`
+- New `timeout` field on `Sass::Config`
+- Input size limits and empty load-path filtering for safer compilation
+- Validation of `--style` and `--source-map-urls` CLI arguments
+- Path validation specs (`spec/path_validation_spec.cr`)
+- Additional stdin/timeout test coverage
+
+### Changed
+
+- Updated Dart Sass dependency from 1.98.0 to 1.100.0
+- Extracted `ArgsBuilder` and `Validator` modules out of `compiler.cr` and `cli.cr`
+- Consolidated constants and simplified internal modules
+- Improved Crystal 1.18.2 compatibility and overall code quality
+- Hardened the README with expanded usage documentation
+
+### Fixed
+
+- Command injection and path traversal vulnerabilities in CLI argument handling
+- Addressed code review security findings
+- CLI parsing bug in `validate_and_execute`
+- Indentation in `cli.cr` `validate_and_execute`
+
+### Security
+
+- Resolved CommandInjection and PathTraversal attack vectors
+- Added input size limits and filtered empty load paths
+- Validated `--style` and `--source-map-urls` arguments before passing to the binary
+
 ## [0.3.1] - 2026-03-19
 
 ### Changed
