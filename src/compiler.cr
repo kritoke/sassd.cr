@@ -555,7 +555,23 @@ module Sass
     )
   end
 
-  # Update specific fields in a config while preserving others
+  # Nil-coalescing merge helper shared by the config-merge surfaces.
+  #
+  # Returns `override` when it is non-nil, otherwise falls back to `existing`.
+  # Unlike `||`, this respects `false`/empty-string/empty-array overrides
+  # instead of treating them as absent — a plain `override || existing` would
+  # wrongly drop a `false` boolean override, so the explicit nil check is
+  # required to keep the merge contract correct.
+  private def self.coalesce(override, existing)
+    override.nil? ? existing : override
+  end
+
+  # Update specific fields in a config while preserving others.
+  #
+  # Every override uses nil-coalescing semantics: a `nil` override preserves
+  # the existing value, while any non-nil override (including `false`, `""`,
+  # or an empty array) is applied as-is. Array overrides replace — they do not
+  # concatenate (concatenation is `Config#merge`'s job).
   def self.update_config(
     config : Config,
     style : String? = nil,
@@ -579,25 +595,25 @@ module Sass
     timeout : Int64? = nil,
   ) : Config
     Config.new(
-      style: style || config.style,
-      source_map: source_map || config.source_map,
-      source_map_embed: source_map_embed || config.source_map_embed,
-      source_map_urls: source_map_urls || config.source_map_urls,
-      embed_sources: embed_sources || config.embed_sources,
-      charset: charset || config.charset,
-      error_css: error_css || config.error_css,
-      quiet: quiet || config.quiet,
-      quiet_deps: quiet_deps || config.quiet_deps,
-      verbose: verbose || config.verbose,
-      load_paths: load_paths || config.load_paths,
-      include_path: include_path.nil? ? config.include_path : include_path,
-      is_indented_syntax_src: is_indented_syntax_src || config.is_indented_syntax_src,
-      min_version: min_version.nil? ? config.min_version : min_version,
-      bin_path: bin_path.nil? ? config.bin_path : bin_path,
-      fatal_deprecation: fatal_deprecation.nil? ? config.fatal_deprecation : fatal_deprecation,
-      silence_deprecation: silence_deprecation.nil? ? config.silence_deprecation : silence_deprecation,
-      future_deprecation: future_deprecation.nil? ? config.future_deprecation : future_deprecation,
-      timeout: timeout.nil? ? config.timeout : timeout
+      style: coalesce(style, config.style),
+      source_map: coalesce(source_map, config.source_map),
+      source_map_embed: coalesce(source_map_embed, config.source_map_embed),
+      source_map_urls: coalesce(source_map_urls, config.source_map_urls),
+      embed_sources: coalesce(embed_sources, config.embed_sources),
+      charset: coalesce(charset, config.charset),
+      error_css: coalesce(error_css, config.error_css),
+      quiet: coalesce(quiet, config.quiet),
+      quiet_deps: coalesce(quiet_deps, config.quiet_deps),
+      verbose: coalesce(verbose, config.verbose),
+      load_paths: coalesce(load_paths, config.load_paths),
+      include_path: coalesce(include_path, config.include_path),
+      is_indented_syntax_src: coalesce(is_indented_syntax_src, config.is_indented_syntax_src),
+      min_version: coalesce(min_version, config.min_version),
+      bin_path: coalesce(bin_path, config.bin_path),
+      fatal_deprecation: coalesce(fatal_deprecation, config.fatal_deprecation),
+      silence_deprecation: coalesce(silence_deprecation, config.silence_deprecation),
+      future_deprecation: coalesce(future_deprecation, config.future_deprecation),
+      timeout: coalesce(timeout, config.timeout),
     )
   end
 

@@ -96,6 +96,157 @@ describe Sass::Config do
   end
 end
 
+describe "config merge semantics (sassd-refactor-002)" do
+  describe "Sass.update_config nil-coalescing" do
+    it "preserves every existing field when all overrides are nil" do
+      base = Sass::Config.new(
+        style: "compressed",
+        source_map: true,
+        source_map_embed: true,
+        source_map_urls: "absolute",
+        embed_sources: true,
+        charset: false,
+        error_css: false,
+        quiet: true,
+        quiet_deps: true,
+        verbose: true,
+        load_paths: ["./a"],
+        include_path: ["./inc"],
+        is_indented_syntax_src: true,
+        min_version: "1.100.0",
+        bin_path: "/sass",
+        fatal_deprecation: "1.100.0",
+        silence_deprecation: ["import"],
+        future_deprecation: "1.101.0",
+        timeout: 42
+      )
+      updated = Sass.update_config(base)
+
+      updated.style.should eq("compressed")
+      updated.source_map.should be_true
+      updated.source_map_embed.should be_true
+      updated.source_map_urls.should eq("absolute")
+      updated.embed_sources.should be_true
+      updated.charset.should be_false
+      updated.error_css.should be_false
+      updated.quiet.should be_true
+      updated.quiet_deps.should be_true
+      updated.verbose.should be_true
+      updated.load_paths.should eq(["./a"])
+      updated.include_path.should eq(["./inc"])
+      updated.is_indented_syntax_src.should be_true
+      updated.min_version.should eq("1.100.0")
+      updated.bin_path.should eq("/sass")
+      updated.fatal_deprecation.should eq("1.100.0")
+      updated.silence_deprecation.should eq(["import"])
+      updated.future_deprecation.should eq("1.101.0")
+      updated.timeout.should eq(42)
+    end
+
+    it "applies a `false` boolean override instead of dropping it" do
+      base = Sass::Config.new(
+        source_map: true,
+        source_map_embed: true,
+        embed_sources: true,
+        charset: true,
+        error_css: true,
+        quiet: true,
+        quiet_deps: true,
+        verbose: true,
+        is_indented_syntax_src: true
+      )
+      updated = Sass.update_config(
+        base,
+        source_map: false,
+        source_map_embed: false,
+        embed_sources: false,
+        charset: false,
+        error_css: false,
+        quiet: false,
+        quiet_deps: false,
+        verbose: false,
+        is_indented_syntax_src: false
+      )
+
+      # A naive `override || existing` would wrongly keep the `true` values here.
+      updated.source_map.should be_false
+      updated.source_map_embed.should be_false
+      updated.embed_sources.should be_false
+      updated.charset.should be_false
+      updated.error_css.should be_false
+      updated.quiet.should be_false
+      updated.quiet_deps.should be_false
+      updated.verbose.should be_false
+      updated.is_indented_syntax_src.should be_false
+    end
+
+    it "respects empty-array and blank-string overrides (not treated as absent)" do
+      base = Sass::Config.new(
+        load_paths: ["./keep"],
+        silence_deprecation: ["import"],
+        include_path: ["./inc"],
+        style: "compressed",
+        source_map_urls: "absolute"
+      )
+      updated = Sass.update_config(
+        base,
+        load_paths: [] of String,
+        silence_deprecation: [] of String,
+        include_path: [] of String,
+        style: "",
+        source_map_urls: ""
+      )
+
+      updated.load_paths.should be_empty
+      updated.silence_deprecation.should eq([] of String)
+      updated.include_path.should eq([] of String)
+      updated.style.should eq("")
+      updated.source_map_urls.should eq("")
+    end
+
+    it "replaces arrays instead of concatenating them" do
+      base = Sass::Config.new(silence_deprecation: ["import"], include_path: ["./a"])
+      updated = Sass.update_config(
+        base,
+        silence_deprecation: ["function-units"],
+        include_path: ["./b"]
+      )
+
+      updated.silence_deprecation.should eq(["function-units"])
+      updated.include_path.should eq(["./b"])
+    end
+  end
+
+  describe "Config#merge list-merge semantics (unchanged)" do
+    it "concatenates include_path lists with self-first precedence" do
+      a = Sass::Config.new(include_path: ["./a1", "./a2"])
+      b = Sass::Config.new(include_path: ["./b1"])
+      a.merge(b).include_path.should eq(["./a1", "./a2", "./b1"])
+    end
+
+    it "concatenates silence_deprecation lists" do
+      a = Sass::Config.new(silence_deprecation: ["import"])
+      b = Sass::Config.new(silence_deprecation: ["function-units"])
+      a.merge(b).silence_deprecation.should eq(["import", "function-units"])
+    end
+
+    it "falls back to the other side when one include_path is nil" do
+      a = Sass::Config.new(include_path: nil)
+      b = Sass::Config.new(include_path: ["./only"])
+      a.merge(b).include_path.should eq(["./only"])
+    end
+
+    it "keeps self precedence for scalar nil-fallback fields" do
+      a = Sass::Config.new(min_version: nil, bin_path: nil, timeout: nil)
+      b = Sass::Config.new(min_version: "1.100.0", bin_path: "/sass", timeout: 99)
+      merged = a.merge(b)
+      merged.min_version.should eq("1.100.0")
+      merged.bin_path.should eq("/sass")
+      merged.timeout.should eq(99)
+    end
+  end
+end
+
 describe "Sass error types" do
   it "raises BinaryNotFoundError when sass binary is not found" do
     # This test would require mocking, but we can at least verify the error type exists
