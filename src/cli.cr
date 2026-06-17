@@ -236,7 +236,7 @@ module Sass::CLI
   end
 
   private def self.show_version
-    puts "sassd.cr version 0.3.0"
+    puts "sassd.cr version #{Sass::VERSION}"
   end
 end
 

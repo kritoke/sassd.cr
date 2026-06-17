@@ -92,7 +92,7 @@ describe "Sass CLI" do
 
   it "shows version with --version" do
     output = `./bin/sassd --version`
-    output.should contain("sassd.cr version 0.3.0")
+    output.should contain("sassd.cr version #{Sass::VERSION}")
   end
 
   it "exits with error for unknown option" do
