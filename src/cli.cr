@@ -179,16 +179,21 @@ module Sass::CLI
       timeout: options.timeout
     )
 
-    result = if options.stdin
-               content = STDIN.gets_to_end
-               if content.empty?
-                 STDERR.puts "Error: No input provided via stdin"
-                 exit 1
-               end
-               Sass.compile(content, config)
-             else
-               Sass.compile_file(options.input_file, config)
-             end
+    result = begin
+      if options.stdin
+        content = STDIN.gets_to_end
+        if content.empty?
+          STDERR.puts "Error: No input provided via stdin"
+          exit 1
+        end
+        Sass.compile(content, config)
+      else
+        Sass.compile_file(options.input_file, config)
+      end
+    rescue ex : Sass::CompilationError
+      STDERR.puts "Error: #{ex.message}"
+      exit 1
+    end
 
     if output_file = options.output_file
       if File.exists?(output_file) && !options.force
