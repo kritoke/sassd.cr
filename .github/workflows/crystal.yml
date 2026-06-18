@@ -15,15 +15,15 @@ jobs:
       image: crystallang/crystal
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install dependencies
       run: shards install
     - name: Install system dependencies
       run: apt-get update && apt-get install -y curl wget
     - name: Install Node.js and npm
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
-        node-version: '20'
+        node-version: '24'
     - name: Install Just
       run: |
         # Install Just command runner
