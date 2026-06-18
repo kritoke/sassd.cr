@@ -2,7 +2,7 @@
 require "./sassd"
 
 # CLI options structure
-struct Sass::CLI::Options
+class Sass::CLI::Options
   property input_file : String = ""
   property output_file : String?
   property style : String = "expanded"
@@ -24,47 +24,196 @@ struct Sass::CLI::Options
   property timeout : Int64?
 end
 
-struct Sass::CLI::Flag
-  getter name : String
-  getter needs_value : Bool
-
-  def initialize(@name : String, @needs_value : Bool)
-  end
-end
-
-module Sass::CLI::OPTIONMAP
-  MAP = {
-    "--style"               => Flag.new("style", true),
-    "--source-map"          => Flag.new("source-map", false),
-    "--embed-source-map"    => Flag.new("embed-source-map", false),
-    "--source-map-urls"     => Flag.new("source-map-urls", true),
-    "--embed-sources"       => Flag.new("embed-sources", false),
-    "--no-charset"          => Flag.new("no-charset", false),
-    "--no-error-css"        => Flag.new("no-error-css", false),
-    "--quiet"               => Flag.new("quiet", false),
-    "--quiet-deps"          => Flag.new("quiet-deps", false),
-    "--verbose"             => Flag.new("verbose", false),
-    "--load-path"           => Flag.new("load-path", true),
-    "--output"              => Flag.new("output", true),
-    "-o"                    => Flag.new("output", true),
-    "--fatal-deprecation"   => Flag.new("fatal-deprecation", true),
-    "--silence-deprecation" => Flag.new("silence-deprecation", true),
-    "--future-deprecation"  => Flag.new("future-deprecation", true),
-    "--stdin"               => Flag.new("stdin", false),
-    "--force"               => Flag.new("force", false),
-    "-f"                    => Flag.new("force", false),
-  }
-
-  def self.[]=(key, value)
-    raise "OPTIONMAP is read-only"
-  end
-
-  def self.[](key)
-    MAP[key]?
-  end
-end
-
 module Sass::CLI
+  # ---------------------------------------------------------------------------
+  # Per-flag-group dispatch handlers
+  #
+  # Every handler shares the signature
+  #   (Options, Array(String), Int32) -> Int32
+  # and returns the *updated* argument index so the orchestration loop can
+  # advance correctly. Value-consuming handlers increment the index, validate
+  # that a value is present (raising the same message the original inline code
+  # raised), and store the value. Boolean handlers simply flip a flag and
+  # return the index unchanged.
+  #
+  # This decomposition replaces the monolithic ``case``/``when`` chain inside
+  # ``run`` so that no single method exceeds the ameba cyclomatic-complexity
+  # budget (sassd-refactor-002, design Decision 2).
+  # ---------------------------------------------------------------------------
+
+  # --- help / version (terminating handlers) ---
+
+  private def self.show_help_and_exit(options : Options, args : Array(String), i : Int32) : Int32
+    show_help
+    exit 0
+  end
+
+  private def self.show_version_and_exit(options : Options, args : Array(String), i : Int32) : Int32
+    show_version
+    exit 0
+  end
+
+  # --- io group (--stdin, --output/-o, --force/-f) ---
+
+  private def self.enable_stdin(options : Options, args : Array(String), i : Int32) : Int32
+    options.stdin = true
+    i
+  end
+
+  private def self.set_output(options : Options, args : Array(String), i : Int32) : Int32
+    i += 1
+    raise "Error: --output requires a value" unless i < args.size
+    options.output_file = args[i]
+    i
+  end
+
+  private def self.enable_force(options : Options, args : Array(String), i : Int32) : Int32
+    options.force = true
+    i
+  end
+
+  # --- style group ---
+
+  private def self.set_style(options : Options, args : Array(String), i : Int32) : Int32
+    i += 1
+    raise "Error: --style requires a value" unless i < args.size
+    options.style = args[i]
+    i
+  end
+
+  # --- timeout group ---
+
+  private def self.set_timeout(options : Options, args : Array(String), i : Int32) : Int32
+    i += 1
+    raise "Error: --timeout requires a value" unless i < args.size
+    options.timeout = args[i].to_i64
+    i
+  end
+
+  # --- source-map group ---
+
+  private def self.enable_source_map(options : Options, args : Array(String), i : Int32) : Int32
+    options.source_map = true
+    i
+  end
+
+  private def self.enable_embed_source_map(options : Options, args : Array(String), i : Int32) : Int32
+    options.source_map_embed = true
+    i
+  end
+
+  private def self.set_source_map_urls(options : Options, args : Array(String), i : Int32) : Int32
+    i += 1
+    raise "Error: --source-map-urls requires a value" unless i < args.size
+    options.source_map_urls = args[i]
+    i
+  end
+
+  private def self.enable_embed_sources(options : Options, args : Array(String), i : Int32) : Int32
+    options.embed_sources = true
+    i
+  end
+
+  # --- output-control group (--no-charset, --no-error-css) ---
+
+  private def self.disable_charset(options : Options, args : Array(String), i : Int32) : Int32
+    options.charset = false
+    i
+  end
+
+  private def self.disable_error_css(options : Options, args : Array(String), i : Int32) : Int32
+    options.error_css = false
+    i
+  end
+
+  # --- verbosity group (--quiet, --quiet-deps, --verbose) ---
+
+  private def self.enable_quiet(options : Options, args : Array(String), i : Int32) : Int32
+    options.quiet = true
+    i
+  end
+
+  private def self.enable_quiet_deps(options : Options, args : Array(String), i : Int32) : Int32
+    options.quiet_deps = true
+    i
+  end
+
+  private def self.enable_verbose(options : Options, args : Array(String), i : Int32) : Int32
+    options.verbose = true
+    i
+  end
+
+  # --- load-path group ---
+
+  private def self.add_load_path(options : Options, args : Array(String), i : Int32) : Int32
+    i += 1
+    raise "Error: --load-path requires a value" unless i < args.size
+    options.load_paths << args[i]
+    i
+  end
+
+  # --- deprecation group ---
+
+  private def self.set_fatal_deprecation(options : Options, args : Array(String), i : Int32) : Int32
+    i += 1
+    raise "Error: --fatal-deprecation requires a value" unless i < args.size
+    options.fatal_deprecation = args[i]
+    i
+  end
+
+  private def self.add_silence_deprecation(options : Options, args : Array(String), i : Int32) : Int32
+    i += 1
+    raise "Error: --silence-deprecation requires a value" unless i < args.size
+    options.silence_deprecation << args[i]
+    i
+  end
+
+  private def self.set_future_deprecation(options : Options, args : Array(String), i : Int32) : Int32
+    i += 1
+    raise "Error: --future-deprecation requires a value" unless i < args.size
+    options.future_deprecation = args[i]
+    i
+  end
+
+  # ---------------------------------------------------------------------------
+  # Dispatch registry
+  #
+  # Maps every recognised option string to its handler proc. The orchestration
+  # loop in ``run`` looks up each argument here; anything not found falls
+  # through to the unknown-option / positional-arg logic.
+  # ---------------------------------------------------------------------------
+
+  HANDLERS = {
+    "--help"                => ->show_help_and_exit(Options, Array(String), Int32),
+    "-h"                    => ->show_help_and_exit(Options, Array(String), Int32),
+    "--version"             => ->show_version_and_exit(Options, Array(String), Int32),
+    "-v"                    => ->show_version_and_exit(Options, Array(String), Int32),
+    "--stdin"               => ->enable_stdin(Options, Array(String), Int32),
+    "--style"               => ->set_style(Options, Array(String), Int32),
+    "--timeout"             => ->set_timeout(Options, Array(String), Int32),
+    "--source-map"          => ->enable_source_map(Options, Array(String), Int32),
+    "--embed-source-map"    => ->enable_embed_source_map(Options, Array(String), Int32),
+    "--source-map-urls"     => ->set_source_map_urls(Options, Array(String), Int32),
+    "--embed-sources"       => ->enable_embed_sources(Options, Array(String), Int32),
+    "--no-charset"          => ->disable_charset(Options, Array(String), Int32),
+    "--no-error-css"        => ->disable_error_css(Options, Array(String), Int32),
+    "--quiet"               => ->enable_quiet(Options, Array(String), Int32),
+    "--quiet-deps"          => ->enable_quiet_deps(Options, Array(String), Int32),
+    "--verbose"             => ->enable_verbose(Options, Array(String), Int32),
+    "--load-path"           => ->add_load_path(Options, Array(String), Int32),
+    "--output"              => ->set_output(Options, Array(String), Int32),
+    "-o"                    => ->set_output(Options, Array(String), Int32),
+    "--force"               => ->enable_force(Options, Array(String), Int32),
+    "-f"                    => ->enable_force(Options, Array(String), Int32),
+    "--fatal-deprecation"   => ->set_fatal_deprecation(Options, Array(String), Int32),
+    "--silence-deprecation" => ->add_silence_deprecation(Options, Array(String), Int32),
+    "--future-deprecation"  => ->set_future_deprecation(Options, Array(String), Int32),
+  } of String => Proc(Options, Array(String), Int32, Int32)
+
+  # ---------------------------------------------------------------------------
+  # Orchestration entry point
+  # ---------------------------------------------------------------------------
+
   def self.run(args : Array(String))
     if args.empty?
       show_help
@@ -76,91 +225,38 @@ module Sass::CLI
     i = 0
     while i < args.size
       arg = args[i]
-      case arg
-      when "--help", "-h"
-        show_help
-        exit 0
-      when "--version", "-v"
-        show_version
-        exit 0
-      when "--stdin"
-        options.stdin = true
-      when "--style"
-        i += 1
-        raise "Error: --style requires a value" unless i < args.size
-        options.style = args[i]
-      when "--timeout"
-        i += 1
-        raise "Error: --timeout requires a value" unless i < args.size
-        options.timeout = args[i].to_i64
-      when "--source-map"
-        options.source_map = true
-      when "--embed-source-map"
-        options.source_map_embed = true
-      when "--source-map-urls"
-        i += 1
-        raise "Error: --source-map-urls requires a value" unless i < args.size
-        options.source_map_urls = args[i]
-      when "--embed-sources"
-        options.embed_sources = true
-      when "--no-charset"
-        options.charset = false
-      when "--no-error-css"
-        options.error_css = false
-      when "--quiet"
-        options.quiet = true
-      when "--quiet-deps"
-        options.quiet_deps = true
-      when "--verbose"
-        options.verbose = true
-      when "--load-path"
-        i += 1
-        raise "Error: --load-path requires a value" unless i < args.size
-        options.load_paths << args[i]
-      when "--output", "-o"
-        i += 1
-        raise "Error: --output requires a value" unless i < args.size
-        options.output_file = args[i]
-      when "--force", "-f"
-        options.force = true
-      when "--fatal-deprecation"
-        i += 1
-        raise "Error: --fatal-deprecation requires a value" unless i < args.size
-        options.fatal_deprecation = args[i]
-      when "--silence-deprecation"
-        i += 1
-        raise "Error: --silence-deprecation requires a value" unless i < args.size
-        options.silence_deprecation << args[i]
-      when "--future-deprecation"
-        i += 1
-        raise "Error: --future-deprecation requires a value" unless i < args.size
-        options.future_deprecation = args[i]
+      if handler = HANDLERS[arg]?
+        i = handler.call(options, args, i)
+      elsif arg.starts_with?("-")
+        STDERR.puts "Unknown option: #{arg}"
+        exit 1
+      elsif options.input_file.empty?
+        options.input_file = arg
       else
-        if arg.starts_with?("-")
-          STDERR.puts "Unknown option: #{arg}"
-          exit 1
-        elsif options.input_file.empty?
-          options.input_file = arg
-        else
-          STDERR.puts "Too many input files specified"
-          exit 1
-        end
+        STDERR.puts "Too many input files specified"
+        exit 1
       end
       i += 1
     end
 
+    validate_input(options)
+    config = build_config(options)
+    execute(options, config)
+  end
+
+  private def self.validate_input(options : Options) : Nil
     if options.input_file.empty? && !options.stdin
       STDERR.puts "Error: Input file is required (or use --stdin to read from stdin)"
       exit 1
     end
+  end
 
+  private def self.build_config(options : Options) : Sass::Config
     sass_bin = File.join(__DIR__, "..", "bin", "sass")
-    unless File.executable?(sass_bin)
-      sass_bin = "sass"
-    end
+    sass_bin = "sass" unless File.executable?(sass_bin)
     Sass.bin_path = sass_bin
 
-    config = Sass::Config.new(
+    Sass::Config.new(
       bin_path: sass_bin,
       style: options.style,
       load_paths: options.load_paths,
@@ -176,9 +272,11 @@ module Sass::CLI
       fatal_deprecation: options.fatal_deprecation,
       silence_deprecation: options.silence_deprecation.empty? ? nil : options.silence_deprecation,
       future_deprecation: options.future_deprecation,
-      timeout: options.timeout
+      timeout: options.timeout,
     )
+  end
 
+  private def self.execute(options : Options, config : Sass::Config) : Nil
     result = begin
       if options.stdin
         content = STDIN.gets_to_end
