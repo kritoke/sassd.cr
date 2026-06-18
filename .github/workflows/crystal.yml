@@ -32,5 +32,7 @@ jobs:
         mv just /usr/local/bin/just
     - name: Install Dart Sass
       run: just sass || npm install -g sass
+    - name: Build CLI binary
+      run: shards build
     - name: Run tests
       run: crystal spec

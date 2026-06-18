@@ -91,7 +91,7 @@ describe "Sass CLI characterization" do
   it "shows version with the -v short alias" do
     output = `./bin/sassd -v`
     $?.success?.should be_true
-    output.should contain("sassd.cr version 0.3.0")
+    output.should contain("sassd.cr version #{Sass::VERSION}")
   end
 
   it "writes output to a file with the -o short alias" do
